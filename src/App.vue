@@ -1,13 +1,15 @@
 <script setup>
-import MapView from './components/MapView.vue'; // Importiere die MapView-Komponente
+import MapView from './components/MapView.vue';
+import FeaturesSection from './components/FeaturesSection.vue';
 </script>
 
 <template>
-  <MapView />
+    <h1 class="text-4xl font-bold text-blue-500 mb-8">Hallo Tailwind mit Vue!</h1>
+    <FeaturesSection />
+    <MapView /> <!-- MapView wird innerhalb des Layouts eingefügt -->
 </template>
 
 <style>
-/* Optional: Falls globale Stile benötigt werden */
 html, body, #app {
   margin: 0;
   padding: 0;
