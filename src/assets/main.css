@@ -39,3 +39,16 @@ a,
     @apply flex items-center;
   }
 }
+
+nav {
+  @apply z-20 shadow-lg fixed w-full bg-white dark:bg-gray-900;
+}
+
+#hero {
+  @apply relative mt-16;
+}
+
+/* Map z-Achse hinter die navbar verlagern */
+.leaflet-container {
+  z-index: 0 !important;
+}

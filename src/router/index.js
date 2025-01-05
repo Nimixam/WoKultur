@@ -9,11 +9,6 @@ const router = createRouter({
       name: 'home',
       component: MapView, // Lade MapView für den Hauptpfad
     },
-    {
-      path: '/about',
-      name: 'about',
-      component: () => import('../views/AboutView.vue'),
-    },
   ],
 });
 

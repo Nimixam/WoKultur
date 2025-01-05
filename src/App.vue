@@ -93,7 +93,7 @@ const toggleDarkMode = () => {
     </nav>
 
     <!-- Hero Section -->
-    <section class="w-full p-10 bg-green-500 text-white dark:bg-gray-800">
+    <section id="hero" class="w-full p-10 bg-green-500 text-white dark:bg-gray-800">
       <h1 class="text-5xl font-bold text-center">
         Map!!! 🚀
       </h1>
