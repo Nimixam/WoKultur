@@ -1,12 +1,31 @@
 <script setup>
+import FilterView from "./components/FilterView.vue";
 import MapView from "./components/MapView.vue";
+import Navbar from "./components/Navbar.vue";
+import Contact from "./components/Contact.vue";
+import About from "./components/About.vue";
+import Hero from "./components/Hero.vue";
+import Footer from "./components/Footer.vue";
 import { ref } from "vue";
 
+// Dark Mode
 const darkMode = ref(false);
-
 const toggleDarkMode = () => {
   darkMode.value = !darkMode.value;
   document.documentElement.classList.toggle("dark", darkMode.value);
+};
+
+// Reaktive Zustände für Filter
+const currentCity = ref("14");
+const showFlexzones = ref(true);
+
+// Event-Handler für Filter
+const handleCityChange = (newCity) => {
+  currentCity.value = newCity;
+};
+
+const handleToggleFlexzones = (isVisible) => {
+  showFlexzones.value = isVisible;
 };
 </script>
 
@@ -14,182 +33,28 @@ const toggleDarkMode = () => {
   <div
     class="min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white"
   >
-    <!-- Navbar -->
-    <nav
-      class="bg-white dark:bg-gray-900 fixed w-full z-20 top-0 start-0 border-b border-gray-200 dark:border-gray-600"
-    >
-      <div
-        class="w-full max-w-screen-2xl mx-auto flex flex-wrap items-center justify-between p-4"
-      >
-        <a
-          href="http://localhost:5176/"
-          class="flex items-center space-x-3 rtl:space-x-reverse"
-        >
-          <img
-            src="D:\Programmieren\escooter_map\src\assets\images\logo.png"
-            class="h-8"
-            alt="Flowbite Logo"
-          />
-          <span
-            class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white"
-          >
-            e-Scooter Map
-          </span>
-        </a>
+    <Navbar :darkMode="darkMode" @toggleDarkMode="toggleDarkMode" />
 
-        <!-- Dark Mode Button und Menü-Toggle -->
-        <div class="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
-          <button
-            type="button"
-            @click="toggleDarkMode"
-            class="px-4 py-2 bg-gray-500 text-white rounded dark:bg-gray-700 dark:text-white"
-          >
-            {{ darkMode ? "Light Mode" : "Dark Mode" }}
-          </button>
-        </div>
+    <Hero />
 
-        <!-- Navigation Links -->
-        <div
-          class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1"
-        >
-          <ul
-            class="flex flex-col p-4 md:p-0 mt-4 font-medium border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700"
-          >
-            <li>
-              <a
-                href="#"
-                class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-green-700 md:p-0 dark:text-white dark:hover:text-green-400"
-              >
-                Home
-              </a>
-            </li>
-            <li>
-              <a
-                href="#about"
-                class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-green-700 md:p-0 dark:text-white dark:hover:text-green-400"
-              >
-                Über uns
-              </a>
-            </li>
-            <li>
-              <a
-                href="#"
-                class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-green-700 md:p-0 dark:text-white dark:hover:text-green-400"
-              >
-                Services
-              </a>
-            </li>
-            <li>
-              <a
-                href="#contact"
-                class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-green-700 md:p-0 dark:text-white dark:hover:text-green-400"
-              >
-                Kontakt
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section id="hero" class="w-full p-10 bg-green-500 text-white dark:bg-gray-800">
-      <h1 class="text-5xl font-bold text-center">
-        Map!!! 🚀
-      </h1>
-    </section>
-
-    <!-- Map Section -->
-    <section
-      id="map"
-      class="w-full py-20 px-6 bg-green-600 text-white dark:bg-gray-700"
-    >
-      <div class="mt-10">
-        <MapView />
-      </div>
-    </section>
-
-    <!-- About Section -->
-    <!-- <section id="about" class="w-full py-20 px-6 bg-gray-100 dark:bg-gray-800">
-      <div class="max-w-3xl mx-auto">
-        <h2 class="text-4xl font-semibold text-center mb-6">
-          Über uns – WoKultur
-        </h2>
-        <p class="text-lg text-center">
-          Wir sind zwei Studenten, die gemeinsam das Projekt WoKultur ins Leben
-          gerufen haben. Unsere Vision ist es, eine interaktive Karte zu
-          entwickeln, die kulturelle Angebote und Veranstaltungen in Köln auf
-          einen Blick sichtbar macht. Von Museen und Theatern bis hin zu
-          Konzerten, Festivals und Ausstellungen – unser Ziel ist es, die
-          vielfältige Kulturszene Kölns zugänglicher und erlebbarer zu machen.
-          Mit WoKultur möchten wir: Aktuelle Veranstaltungen und kulturelle
-          Angebote auf einer Karte übersichtlich darstellen. Die kulturelle
-          Vielfalt Kölns für alle sichtbar machen – egal ob für Einheimische
-          oder Besucher. Inspiration und Entdeckung fördern und Kultur für alle
-          greifbar machen. WoKultur ist ein Herzensprojekt, das aus unserer
-          Leidenschaft für Kultur und unserer Liebe zu Köln entstanden ist. Wir
-          hoffen, mit unserer Plattform die Kölner Kulturszene noch näher zu den
-          Menschen zu bringen. Vielen Dank für euer Interesse und eure
-          Unterstützung! 😊
-        </p>
-      </div>
-    </section> -->
-
-
-    <!-- About Section -->
-<section id="about" class="w-full py-20 px-6 bg-gray-100 dark:bg-gray-800">
-  <!-- Grid erstellen damit Bild links und Text rechts stehen kann -->
-  <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-    <!-- Left Column: Image -->
-    <div class="flex justify-center">
-      <img src="..\src\assets\images\bild.jpg" alt="WoKultur Illustration" class="rounded-lg shadow-lg">
+    <div class="mt-10">
+      <FilterView
+        :currentCity="currentCity"
+        :flexzonesVisible="showFlexzones"
+        @updateCity="handleCityChange"
+        @toggleFlexzones="handleToggleFlexzones"
+      />
     </div>
 
-    <!-- Right Column: Text -->
-    <div>
-      <h2 class="text-4xl font-extrabold text-center md:text-left mb-6 text-gray-900 dark:text-white">
-        Über uns – WoKultur
-      </h2>
-      <p class="text-lg text-center md:text-left mb-6 text-gray-700 dark:text-gray-300">
-        Wir sind zwei Studenten, die gemeinsam das Projekt <span class="text-green-500 font-bold">WoKultur</span> ins Leben
-        gerufen haben. Unsere Vision ist es, eine interaktive Karte zu entwickeln, die kulturelle Angebote und Veranstaltungen in
-        Köln auf einen Blick sichtbar macht.
-      </p>
-      <ul class="space-y-4">
-        <li class="flex items-center">
-          <svg class="w-6 h-6 text-green-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <span>Aktuelle Veranstaltungen und kulturelle Angebote übersichtlich darstellen.</span>
-        </li>
-        <li class="flex items-center">
-          <svg class="w-6 h-6 text-green-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <span>Die kulturelle Vielfalt Kölns für alle sichtbar machen.</span>
-        </li>
-        <li class="flex items-center">
-          <svg class="w-6 h-6 text-green-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <span>Inspiration und Entdeckung fördern.</span>
-        </li>
-      </ul>
+    <div class="mt-10">
+      <MapView :currentCity="currentCity" :showFlexzones="showFlexzones" />
     </div>
-  </div>
-</section>
 
+    <About />
 
-    <!-- Contact Section -->
-    <section
-      id="contact"
-      class="w-full py-20 px-6 bg-green-600 text-white dark:bg-gray-700"
-    >
-      <h2 class="text-4xl font-semibold text-center mb-6">Kontakt</h2>
-      <p class="text-lg text-center">
-        Finden Sie uns auf der Karte oder schreiben Sie uns eine Nachricht.
-      </p>
-    </section>
+    <Contact />
+
+    <Footer />
+
   </div>
 </template>

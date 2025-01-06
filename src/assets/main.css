@@ -28,7 +28,8 @@ a,
 
 @media (hover: hover) {
   a:hover {
-    @apply bg-green-100 dark:bg-green-700;
+    @apply bg-green-200 !important;
+    dark:bg-gray-700 !important;
   }
 }
 
@@ -38,17 +39,4 @@ a,
   body {
     @apply flex items-center;
   }
-}
-
-nav {
-  @apply z-20 shadow-lg fixed w-full bg-white dark:bg-gray-900;
-}
-
-#hero {
-  @apply relative mt-16;
-}
-
-/* Map z-Achse hinter die navbar verlagern */
-.leaflet-container {
-  z-index: 0 !important;
 }
