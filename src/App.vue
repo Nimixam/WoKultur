@@ -1,4 +1,5 @@
 <script setup>
+import Filter from "./components/Filter.vue"
 import FilterView from "./components/FilterView.vue";
 import EventsMap from "./components/EventsMap.vue";
 import Navbar from "./components/Navbar.vue";
@@ -36,6 +37,8 @@ const handleToggleFlexzones = (isVisible) => {
     <Navbar :darkMode="darkMode" @toggleDarkMode="toggleDarkMode" />
 
     <Hero />
+
+    <Filter />
 
     <div class="mt-10">
       <FilterView

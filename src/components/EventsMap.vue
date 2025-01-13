@@ -6,40 +6,29 @@
 </template>
 
 <script>
+// import { ref } from 'vue'
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-export default {
-  name: "EventsMap",
-  data() {
-    return {
-      map: null,
-      eventLayer: null,
-    };
-  },
-  methods: {
-    initializeMap() {
-      // Initialisiere die Karte
-      this.map = L.map("map").setView([50.9375, 6.9603], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(this.map);
+// export const id = ref(92)
 
-      this.eventLayer = L.layerGroup().addTo(this.map);
-      this.loadEvents();
-    },
-    loadEvents() {
+
+let eventLayer = null;
+
+export const loadEvents = (id) => {
       // Lade Veranstaltungen von der API
       // console.log(fetch("https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php").then((response) => response.json()));
-      fetch("https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=30")
+      fetch(`https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?&kat=${id}&ndays=7`)
         .then((response) => response.json())
         .then(data => {
           const events = data.items;
+          if (eventLayer) eventLayer.clearLayers(); // Entferne alte Marker
+          console.log(events)
           events.forEach((event) => {
             if (event.latitude && event.longitude) {
               // Füge Marker hinzu
               L.marker([event.latitude, event.longitude])
-                .addTo(this.eventLayer)
+                .addTo(eventLayer)
                 .bindPopup(`
                   <strong>${event.title}</strong><br>
                   <em>${event.beginndatum} bis ${event.endedatum}</em><br>
@@ -52,11 +41,30 @@ export default {
           });
         })
         .catch((error) => console.error("Fehler beim Abrufen der Veranstaltungen:", error));
-    },
+};
+
+export default {
+  name: "EventsMap",
+  data() {
+    return {
+      map: null
+    };
+  },
+  methods: {
+    initializeMap() {
+      // Initialisiere die Karte
+      this.map = L.map("map").setView([50.9375, 6.9603], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(this.map);
+
+      eventLayer = L.layerGroup().addTo(this.map);
+      loadEvents(92);
+    }
   },
   mounted() {
     this.initializeMap();
-  },
+  }
 };
 </script>
 
