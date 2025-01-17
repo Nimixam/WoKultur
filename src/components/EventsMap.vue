@@ -18,7 +18,7 @@ let eventLayer = null;
 export const loadEvents = (id) => {
       // Lade Veranstaltungen von der API
       // console.log(fetch("https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php").then((response) => response.json()));
-      fetch(`https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?&kat=${id}&ndays=7`)
+      fetch(`https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${id}`)
         .then((response) => response.json())
         .then(data => {
           const events = data.items;
@@ -52,6 +52,11 @@ export default {
   },
   methods: {
     initializeMap() {
+      if (this.map) {
+      console.warn("Map already initialized!");
+      return;
+    }
+    
       // Initialisiere die Karte
       this.map = L.map("map").setView([50.9375, 6.9603], 12);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
