@@ -1,10 +1,11 @@
 <script setup>
+import Navbar from "./components/Navbar.vue";
+import Hero from "./components/Hero.vue";
+import TimeLine from "./components/TimeLine.vue";
 import FilterView from "./components/FilterView.vue";
 import MapView from "./components/MapView.vue";
-import Navbar from "./components/Navbar.vue";
 import Contact from "./components/Contact.vue";
 import About from "./components/About.vue";
-import Hero from "./components/Hero.vue";
 import Footer from "./components/Footer.vue";
 import { ref } from "vue";
 
@@ -36,6 +37,8 @@ const handleToggleFlexzones = (isVisible) => {
     <Navbar :darkMode="darkMode" @toggleDarkMode="toggleDarkMode" />
 
     <Hero />
+
+    <TimeLine />
 
     <div class="mt-10">
       <FilterView

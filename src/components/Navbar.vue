@@ -17,7 +17,7 @@
         <span
           class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white"
         >
-          e-Scooter Map
+          WoKultur
         </span>
       </a>
 
