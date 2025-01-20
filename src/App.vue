@@ -8,6 +8,7 @@ import Contact from "./components/Contact.vue";
 import About from "./components/About.vue";
 import Filter from "./components/Filter.vue"
 import EventsMap from "./components/EventsMap.vue";
+import Footer from "./components/Footer.vue";
 import { ref } from "vue";
 
 // Dark Mode

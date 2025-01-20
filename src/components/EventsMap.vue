@@ -18,7 +18,7 @@ let eventLayer = null;
 export const loadEvents = (id) => {
       // Lade Veranstaltungen von der API
       // console.log(fetch("https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php").then((response) => response.json()));
-      fetch(`https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${id}`)
+      fetch(`http://localhost:3000/events?id=${id}`)
         .then((response) => response.json())
         .then(data => {
           const events = data.items;

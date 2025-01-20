@@ -28,15 +28,18 @@
     getCategory()
 
     function getCategory() {
-      fetch("https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?type=listkat")
-      .then((response) => response.json())
-      .then(data => {
-        console.log(data)
-        categoryData.value = data
-        arrayLength.value = data.items.length
-      
-      })
-    }
+  fetch('http://localhost:3000/categories')
+    .then((response) => response.json())
+    .then((data) => {
+      console.log(data)
+      categoryData.value = data
+      arrayLength.value = data.items.length
+    })
+    .catch(error => {
+      console.error('Fehler beim Abrufen der Kategorien:', error);
+    });
+}
+
 
     function updateMap(event) {
       // id = selection.value
