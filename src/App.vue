@@ -1,4 +1,5 @@
 <script setup>
+<<<<<<< HEAD
 import Navbar from "./components/Navbar.vue";
 import Hero from "./components/Hero.vue";
 import TimeLine from "./components/TimeLine.vue";
@@ -6,6 +7,15 @@ import FilterView from "./components/FilterView.vue";
 import MapView from "./components/MapView.vue";
 import Contact from "./components/Contact.vue";
 import About from "./components/About.vue";
+=======
+import Filter from "./components/Filter.vue"
+import FilterView from "./components/FilterView.vue";
+import EventsMap from "./components/EventsMap.vue";
+import Navbar from "./components/Navbar.vue";
+import Contact from "./components/Contact.vue";
+import About from "./components/About.vue";
+import Hero from "./components/Hero.vue";
+>>>>>>> david
 import Footer from "./components/Footer.vue";
 import { ref } from "vue";
 
@@ -38,7 +48,11 @@ const handleToggleFlexzones = (isVisible) => {
 
     <Hero />
 
+<<<<<<< HEAD
     <TimeLine />
+=======
+    <Filter />
+>>>>>>> david
 
     <div class="mt-10">
       <FilterView
@@ -49,9 +63,13 @@ const handleToggleFlexzones = (isVisible) => {
       />
     </div>
 
+<<<<<<< HEAD
     <div class="mt-10">
       <MapView :currentCity="currentCity" :showFlexzones="showFlexzones" />
     </div>
+=======
+    <EventsMap />
+>>>>>>> david
 
     <About />
 
