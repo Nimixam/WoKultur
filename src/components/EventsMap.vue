@@ -6,41 +6,37 @@
 </template>
 
 <script>
-// import { ref } from 'vue'
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-// export const id = ref(92)
-
 
 let eventLayer = null;
 
 export const loadEvents = (id) => {
-      // Lade Veranstaltungen von der API
-      // console.log(fetch("https://api.allorigins.win/raw?url=https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php").then((response) => response.json()));
-      fetch(`http://localhost:3000/events?id=${id}`)
-        .then((response) => response.json())
-        .then(data => {
-          const events = data.items;
-          if (eventLayer) eventLayer.clearLayers(); // Entferne alte Marker
-          console.log(events)
-          events.forEach((event) => {
-            if (event.latitude && event.longitude) {
-              // Füge Marker hinzu
-              L.marker([event.latitude, event.longitude])
-                .addTo(eventLayer)
-                .bindPopup(`
-                  <strong>${event.title}</strong><br>
-                  <em>${event.beginndatum} bis ${event.endedatum}</em><br>
-                  <p>${event.description || "Keine Beschreibung verfügbar"}</p>
-                  <strong>Ort:</strong> ${event.veranstaltungsort || "Unbekannt"}<br>
-                  <strong>Adresse:</strong> ${event.strasse || ""} ${event.hausnummer || ""}, ${event.plz || ""} ${event.ort || ""}<br>
-                  <a href="${event.link}" target="_blank">Weitere Informationen</a>
-                `);
-            }
-          });
-        })
-        .catch((error) => console.error("Fehler beim Abrufen der Veranstaltungen:", error));
+  fetch(`http://localhost:3000/events?id=${id}`)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data && Array.isArray(data.items)) {
+        if (eventLayer) eventLayer.clearLayers(); // Entferne alte Marker
+        data.items.forEach((event) => {
+          if (event.latitude && event.longitude) {
+            // Füge Marker hinzu
+            L.marker([event.latitude, event.longitude])
+              .addTo(eventLayer)
+              .bindPopup(`
+                <strong>${event.title}</strong><br>
+                <em>${event.beginndatum} bis ${event.endedatum}</em><br>
+                <p>${event.description || "Keine Beschreibung verfügbar"}</p>
+                <strong>Ort:</strong> ${event.veranstaltungsort || "Unbekannt"}<br>
+                <strong>Adresse:</strong> ${event.strasse || ""} ${event.hausnummer || ""}, ${event.plz || ""} ${event.ort || ""}<br>
+                <a href="${event.link}" target="_blank">Weitere Informationen</a>
+              `);
+          }
+        });
+      } else {
+        console.error("Datenformat nicht korrekt oder keine Veranstaltungen gefunden:", data);
+      }
+    })
+    .catch((error) => console.error("Fehler beim Abrufen der Veranstaltungen:", error));
 };
 
 export default {
@@ -53,11 +49,10 @@ export default {
   methods: {
     initializeMap() {
       if (this.map) {
-      console.warn("Map already initialized!");
-      return;
-    }
-    
-      // Initialisiere die Karte
+        console.warn("Map already initialized!");
+        return;
+      }
+
       this.map = L.map("map").setView([50.9375, 6.9603], 12);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",

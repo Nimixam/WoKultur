@@ -1,46 +1,35 @@
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Für CORS-Unterstützung
+const cors = require('cors');
 
 const app = express();
 const port = 3000;
 
-// Erlaube CORS für alle Domains (kannst du bei Bedarf einschränken)
 app.use(cors());
 
-// ========== ENDPOINT 1: Events ==========
-//  -> Ruft Daten auf: https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=...&ndays=7
+// Middleware für Fehlerprotokollierung
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+// Endpunkt: Veranstaltungen
 app.get('/events', async (req, res) => {
-  const { id } = req.query;
-  if (!id) {
-    return res.status(400).json({ error: 'ID is required' });
-  }
-
   try {
     const response = await axios.get(
-      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${id}&ndays=7`
+      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${req.query.id}&ndays=7`
     );
-    res.json(response.data);
+    if (response.data && Array.isArray(response.data.items)) {
+      res.json(response.data);
+    } else {
+      console.error("Ungültige Antwort von der API:", response.data);
+      res.status(500).json({ error: "Ungültige API-Daten" });
+    }
   } catch (error) {
-    console.error('Error fetching events:', error);
-    res.status(500).json({ error: 'Failed to fetch events' });
+    console.error('Error fetching events:', error.message);
+    res.status(500).json({ error: 'Failed to fetch events', details: error.message });
   }
 });
 
-// ========== ENDPOINT 2: Kategorien ==========
-//  -> Ruft Daten auf: https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?type=listkat
-app.get('/categories', async (req, res) => {
-  try {
-    const response = await axios.get(
-      'https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?type=listkat'
-    );
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Failed to fetch categories' });
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+// Endpunkt: Kategorien
+app.get('/categories', async (
