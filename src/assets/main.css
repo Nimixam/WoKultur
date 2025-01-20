@@ -15,11 +15,8 @@ html {
 
 /* Zentrierung und maximale Breite der App */
 #app {
-<<<<<<< HEAD
   /* KOMPLETTE BREITE DER WEBSEITE NUTZEN */
   /* @apply w-full p-8 font-normal; */
-=======
->>>>>>> david
   @apply w-full max-w-screen-2xl md:max-w-screen-lg sm:max-w-screen-md mx-auto p-8 font-normal;
 }
 
