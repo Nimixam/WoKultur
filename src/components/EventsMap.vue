@@ -12,7 +12,7 @@ import "leaflet/dist/leaflet.css";
 let eventLayer = null;
 
 export const loadEvents = (id) => {
-  fetch(`http://localhost:3000/events?id=${id}`)
+  fetch(`http://localhost:3000/events?id=${id}&ndays=${7}`)
     .then((response) => response.json())
     .then((data) => {
       if (data && Array.isArray(data.items)) {

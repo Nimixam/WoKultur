@@ -11,36 +11,81 @@
       @change="updateMap"
     >
       <option value="" disabled>Kategorie wählen</option>
-      <option v-for="element in categoryData.items" :key="element.id" :value="element.id">
-        {{ element.kategorie }}
+      <option v-for="element in storedEventsData.value.find(obj => obj.ndays === TimeLine.sliderValue).availableCategories" :key="element.id" :value="element.id">
+        {{ element.name }}
       </option>
     </select>
   </form>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { loadEvents } from './EventsMap.vue';
+import { TimeLine } from './TimeLine.vue';
 
-const categoryData = ref({ items: [] });
+const sliderValue = ref(TimeLine.sliderValue);
+
+const categoryData = ref([]);
+
+const storedEventsData = ref([]);
 
 getCategory();
+
 
 function getCategory() {
   fetch("http://localhost:3000/categories")
     .then(response => response.json())
     .then(data => {
       if (data && Array.isArray(data.items)) {
-        categoryData.value = data;
+        categoryData.value = data.items;
         console.log(`Es gibt ${data.items.length} Kategorien.`);
       } else {
         console.error("Die API-Daten sind nicht im erwarteten Format:", data);
-        categoryData.value = { items: [] };
+        categoryData.value = [];
       }
     })
     .catch(error => {
       console.error("Fehler beim Abrufen der Kategorien:", error);
     });
+}
+
+function fetchEvents(days) {
+  for (let index = 0; index < categoryData.value.length; index++) {
+    
+    fetch(`http://localhost:3000/events?id=${categoryData.value[index].id}&ndays=${days}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data && Array.isArray(data.items)) {
+          if (data.items.length >= 1) {
+            let foundObject = undefined;
+            if ((foundObject = storedEventsData.value.find(obj => obj.ndays === days)) != undefined) {
+              foundObject.availableCategories.push(
+                {
+                  id: categoryData.value[index].id,
+                  name: categoryData.value[index].kategorie,
+                  events: data.items
+                }
+              );
+            }
+            else {
+              storedEventsData.value.push(
+                {
+                  ndays: days,
+                  availableCategories: [
+                    {
+                      id: categoryData.value[index].id,
+                      name: categoryData.value[index].kategorie,
+                      events: data.items
+                    }
+                  ]
+                }
+              );
+            }
+          }
+        }
+      });
+
+  }
 }
 
 function updateMap(event) {

@@ -16,8 +16,9 @@ app.use((err, req, res, next) => {
 // Endpunkt: Veranstaltungen
 app.get('/events', async (req, res) => {
   try {
+    const ndays = req.query.ndays || 7;
     const response = await axios.get(
-      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${req.query.id}&ndays=7`
+      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${req.query.id}&ndays=${ndays}`
     );
     if (response.data && Array.isArray(response.data.items)) {
       res.json(response.data);
