@@ -3,15 +3,6 @@
     <div class="w-full px-4">
       <!-- Titel oder Überschrift -->
       <h1 class="text-2xl font-bold mb-4">Meine Timeline</h1>
-      
-      <!-- Zeitleisten-Bereich -->
-      <div class="relative h-2 rounded-md bg-gray-200 mb-6">
-        <!-- Gefüllter Balken als "Progress" -->
-        <div
-          class="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-300"
-          :style="{ width: ((sliderValue - 1) / 13) * 100 + '%' }"
-        ></div>
-      </div>
   
       <!-- Slider-Regler -->
       <input
