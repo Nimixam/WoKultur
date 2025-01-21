@@ -32,4 +32,23 @@ app.get('/events', async (req, res) => {
 });
 
 // Endpunkt: Kategorien
-app.get('/categories', async (
+app.get('/categories', async (req, res) => {
+  try {
+    const response = await axios.get(
+      'https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?type=listkat'
+    );
+    if (response.data && Array.isArray(response.data.items)) {
+      res.json(response.data);
+    } else {
+      console.error("Ungültige Antwort von der API:", response.data);
+      res.status(500).json({ error: "Ungültige API-Daten" });
+    }
+  } catch (error) {
+    console.error('Error fetching categories:', error.message);
+    res.status(500).json({ error: 'Failed to fetch categories', details: error.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
