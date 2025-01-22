@@ -19,8 +19,10 @@
       wählen:</label>
     <select v-if="!isDataLoading" id="kat-filter"
       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-green-500 dark:focus:border-green-500"
-      @change="updateMap">
+      @change="updateMap"
+      v-model="selectedCategory">
       <option v-if="storedEventsData.value.length === 0" disabled>Keine Kategorien verfügbar</option>
+      <option value="" selected>Alle Kategorien</option>
       <option
         v-for="element in storedEventsData.value.find(obj => obj.ndays === sliderValue.value)?.availableCategories || []"
         :key="element.id" :value="element.id">
@@ -34,6 +36,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { loadEvents } from './EventsMap.vue';
+
 
 // Reactive Variablen
 const sliderValue = ref(1); // Standardwert: Heute
@@ -59,6 +62,7 @@ const currentDate = computed(() => {
 
 // Initialer Abruf von Kategorien
 getCategory();
+const selectedCategory = ref(""); // Standardwert: Alle Kategorien
 
 // Initialisierung der Events basierend auf dem Sliderwert
 fetchEvents(sliderValue.value);
@@ -73,8 +77,8 @@ watch(sliderValue, (newSliderValue) => {
 // Funktion zum Abrufen von Kategorien
 function getCategory() {
   fetch("http://localhost:3000/categories")
-    .then(response => response.json())
-    .then(data => {
+    .then((response) => response.json())
+    .then((data) => {
       if (data && Array.isArray(data.items)) {
         categoryData.value = data.items;
         console.log(`Es gibt ${data.items.length} Kategorien.`);
@@ -83,7 +87,7 @@ function getCategory() {
         categoryData.value = [];
       }
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("Fehler beim Abrufen der Kategorien:", error);
     });
 }
@@ -147,7 +151,13 @@ function fetchData(days) {
 // Funktion zur Aktualisierung der Karte
 function updateMap(event) {
   const selection = event.target.value;
-  console.log(selection);
-  loadEvents(selection);
+  if (!selection) {
+    //alle Events laden
+    loadEvents();
+  } else {
+    //nach Kategorie gefilterte Events anzeigen
+    loadEvents(selection);
+    console.log(selection);
+  }
 }
 </script>
