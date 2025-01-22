@@ -16,19 +16,18 @@ app.use((err, req, res, next) => {
 // Endpunkt: Veranstaltungen
 app.get('/events', async (req, res) => {
   try {
-    const ndays = req.query.ndays || 7;
     const response = await axios.get(
-      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${req.query.id}&ndays=${ndays}`
+      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${req.query.id}&ndays=${req.query.ndays}`
     );
-    if (response.data && Array.isArray(response.data.items)) {
+    if (response.data?.items?.length > 0) {
       res.json(response.data);
     } else {
-      console.error("Ungültige Antwort von der API:", response.data);
-      res.status(500).json({ error: "Ungültige API-Daten" });
+      console.warn('Leere oder ungültige API-Daten:', response.data);
+      res.status(404).json({ error: "Keine Events gefunden" });
     }
   } catch (error) {
-    console.error('Error fetching events:', error.message);
-    res.status(500).json({ error: 'Failed to fetch events', details: error.message });
+    console.error('Fehler beim Abrufen von Events:', error.message);
+    res.status(500).json({ error: 'Fehler beim Abrufen von Events', details: error.message });
   }
 });
 
