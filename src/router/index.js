@@ -1,13 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import MapView from '../components/MapView.vue'; // Importiere die MapView-Komponente
+import FilterView from '../components/Filter.vue'; // Oder eine andere existierende Komponente
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/', // Hauptpfad
+      path: '/',
       name: 'home',
-      component: MapView, // Lade MapView für den Hauptpfad
+      component: FilterView, // Verwenden Sie hier eine andere gültige Komponente
     },
   ],
 });

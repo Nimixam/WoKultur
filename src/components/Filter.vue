@@ -9,9 +9,15 @@
       id="kat-filter"
       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-green-500 dark:focus:border-green-500"
       @change="updateMap"
+      v-model="selectedCategory"
     >
-      <option value="" disabled>Kategorie wählen</option>
-      <option v-for="element in categoryData.items" :key="element.id" :value="element.id">
+      <option value="" selected>Alle Kategorien</option>
+      <!-- Standardwert -->
+      <option
+        v-for="element in categoryData.items"
+        :key="element.id"
+        :value="element.id"
+      >
         {{ element.kategorie }}
       </option>
     </select>
@@ -19,17 +25,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { loadEvents } from './EventsMap.vue';
+import { ref } from "vue";
+import { loadEvents } from "./EventsMap.vue";
 
 const categoryData = ref({ items: [] });
 
 getCategory();
+const selectedCategory = ref(""); // Standardwert: Alle Kategorien
 
 function getCategory() {
   fetch("http://localhost:3000/categories")
-    .then(response => response.json())
-    .then(data => {
+    .then((response) => response.json())
+    .then((data) => {
       if (data && Array.isArray(data.items)) {
         categoryData.value = data;
         console.log(`Es gibt ${data.items.length} Kategorien.`);
@@ -38,14 +45,20 @@ function getCategory() {
         categoryData.value = { items: [] };
       }
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("Fehler beim Abrufen der Kategorien:", error);
     });
 }
 
 function updateMap(event) {
   const selection = event.target.value;
-  console.log(selection);
-  loadEvents(selection);
+  if (!selection) {
+    //alle Events laden
+    loadEvents();
+  } else {
+    //nach Kategorie gefilterte Events anzeigen
+    loadEvents(selection);
+    console.log(selection);
+  }
 }
 </script>
