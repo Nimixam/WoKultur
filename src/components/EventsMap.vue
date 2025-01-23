@@ -6,18 +6,18 @@
     </div>
 
     <!-- Liste rechts -->
-    <div class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto">
+    <div class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white">
       <h2 class="text-lg font-bold mb-4 text-center">Liste der Veranstaltungen</h2>
       <ul>
         <li
           v-for="event in filteredEvents"
           :key="event.id"
           @click="focusOnEvent(event)"
-          class="mb-2 p-3 bg-white shadow rounded cursor-pointer hover:bg-gray-200"
-        >
+          class="mb-2 p-3 bg-white shadow rounded cursor-pointer hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+          >
           <h3 class="font-semibold">{{ event.title }}</h3>
-          <p class="text-sm text-gray-700">{{ event.description || 'Keine Beschreibung verfügbar' }}</p>
-          <p class="text-sm text-gray-500">
+          <p class="text-sm text-gray-700 dark:text-gray-200">{{ event.description || 'Keine Beschreibung verfügbar' }}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
             {{ formatDate(event.start_date) }} - {{ formatDate(event.end_date) }}
           </p>
         </li>
