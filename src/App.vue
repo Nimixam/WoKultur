@@ -16,22 +16,39 @@ const toggleDarkMode = () => {
   document.documentElement.classList.toggle("dark", darkMode.value);
 };
 
-// Gemäß deinem bestehenden Code
+// Event-Daten
 const filteredEvents = ref([]);
+const allEvents = ref([]); // Originaldaten für das Filtern
 
-// Wird von <Filter> aufgerufen, um gefilterte Events zurückzugeben
-const updateFilteredEvents = (events) => {
-  filteredEvents.value = events;
-};
-
-// Steuert, ob die Filter-Sidebar offen oder geschlossen ist
+// Filter-Sidebar
 const isFilterOpen = ref(false);
-
-// Klick-Handler für den Button
 const toggleFilter = () => {
   isFilterOpen.value = !isFilterOpen.value;
 };
+
+// Lade die Events (z. B. von einer API)
+async function loadEvents() {
+  try {
+    const response = await fetch("http://localhost:3000/events");
+    const data = await response.json();
+    if (Array.isArray(data.events)) {
+      allEvents.value = data.events; // Speichere Originaldaten
+      filteredEvents.value = data.events; // Zeige standardmäßig alle Events
+    }
+  } catch (error) {
+    console.error("Fehler beim Laden der Events:", error);
+  }
+}
+
+// Filterlogik
+const updateFilteredEvents = (filtered) => {
+  filteredEvents.value = filtered;
+};
+
+// Events laden, wenn die App startet
+loadEvents();
 </script>
+
 
 <template>
   <div class="min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white">
@@ -50,34 +67,29 @@ const toggleFilter = () => {
     </div>
 
     <!-- Hauptbereich mit Map + Liste (links) und ausklappbarem Filter (rechts) -->
-    <div
-      class="relative flex transition-all duration-300 mt-4"
-      style="height: 60vh;"
-    >
+    <div class="relative flex transition-all duration-300 mt-4" style="height: 60vh;">
       <!-- Links: Map und Liste zusammen -->
-      <!-- Bei ausgeklapptem Filter geben wir etwas Platz ab, z. B. 3/4 statt voll -->
       <div
         class="flex-none transition-all duration-300"
         :class="isFilterOpen ? 'w-3/4' : 'w-full'"
       >
-        <!-- Hier binden wir deine Map-Komponente ein,
-             die auch die Liste anzeigt (EventsMap).
-             Achte darauf, dass du das Prop richtig benennst:
-             :filtered-events="filteredEvents"
-        -->
         <EventsMap :filtered-events="filteredEvents" />
       </div>
 
-      <!-- Rechts: Filter-Sidebar (nur sichtbar, wenn isFilterOpen true ist).
-           Wir verwenden hier v-if + Transition für ein sanftes Ein-/Ausfahren. 
-      -->
-      <transition name="slide">
+      <!-- Rechts: Filter-Sidebar mit sanfter Transition -->
+      <transition
+        enter-active-class="transition ease-out duration-300"
+        enter-from-class="opacity-0 translate-x-full"
+        enter-to-class="opacity-100 translate-x-0"
+        leave-active-class="transition ease-in duration-200"
+        leave-from-class="opacity-100 translate-x-0"
+        leave-to-class="opacity-0 translate-x-full"
+      >
         <div
           v-if="isFilterOpen"
-          class="flex-none w-1/4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white p-4 overflow-y-auto"
+          class="flex-none w-1/4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white p-4 overflow-y-auto shadow-lg"
         >
           <h2 class="text-lg font-bold mb-2">Filter</h2>
-          <!-- Unsere Filter-Komponente -->
           <Filter @updateFilteredEvents="updateFilteredEvents" />
         </div>
       </transition>
@@ -90,15 +102,6 @@ const toggleFilter = () => {
   </div>
 </template>
 
-<!-- Optional: CSS-Transition-Klassen für sanftes Ein-/Ausfahren -->
 <style scoped>
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s ease;
-}
-.slide-enter-from,
-.slide-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
-}
+/* Zusätzliche Transition-Effekte bei Bedarf */
 </style>
