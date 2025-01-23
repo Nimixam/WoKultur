@@ -84,73 +84,45 @@ watch(sliderValue, (newSliderValue) => {
 // Kategorien abrufen
 function getCategory() {
   fetch("http://localhost:3000/categories")
-    .then((response) => response.json())
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+      }
+      return response.json();
+    })
     .then((data) => {
       if (data && Array.isArray(data.items)) {
         categoryData.value = data.items;
-        console.log(`Kategorien erfolgreich geladen: ${data.items.length} Kategorien.`);
+        console.log(`Dynamische Kategorien erfolgreich geladen: ${data.items.length} Kategorien.`);
       } else {
         console.error("Die API-Daten für Kategorien sind nicht im erwarteten Format:", data);
         categoryData.value = [];
       }
     })
     .catch((error) => {
-      console.error("Fehler beim Abrufen der Kategorien:", error);
+      console.error("Fehler beim Abrufen der Kategorien:", error.message);
     });
 }
 
 // Events basierend auf Tagen abrufen
-function fetchEvents(days) {
-  console.log(`Fetching events for ${days} days...`);
+function fetchEvents() {
+  console.log(`Veranstaltungen laden...`);
 
-  if (categoryData.value.length === 0) {
-    console.warn("Kategorien sind nicht geladen. Vorgang wird abgebrochen.");
-    return;
-  }
-
-  const existingData = storedEventsData.value.find((obj) => obj.ndays === days);
-  if (existingData) {
-    console.log(`Daten für ndays=${days} sind bereits vorhanden.`);
-    return;
-  }
-
-  const promises = categoryData.value.map((category) => {
-    const url = `http://localhost:3000/events?id=${category.id}&ndays=${days}`;
-    console.log("Fetching URL:", url);
-
-    return fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data && Array.isArray(data.items) && data.items.length > 0) {
-          console.log(`Daten für Kategorie "${category.kategorie}" empfangen:`, data.items);
-
-          let storedData = storedEventsData.value.find((obj) => obj.ndays === days);
-          if (!storedData) {
-            storedData = { ndays: days, availableCategories: [] };
-            storedEventsData.value.push(storedData);
-          }
-          storedData.availableCategories.push({
-            id: category.id,
-            name: category.kategorie,
-            events: data.items,
-          });
-        } else {
-          console.warn(`Keine Events für Kategorie "${category.kategorie}" gefunden.`);
-        }
-      })
-      .catch((error) => {
-        console.error(`Fehler beim Abrufen von Events für Kategorie ${category.id}:`, error);
-      });
-  });
-
-  Promise.all(promises)
-    .then(() => {
-      console.log("Alle Events erfolgreich abgerufen.");
+  fetch("http://localhost:3000/events")
+    .then((response) => response.json())
+    .then((data) => {
+      if (Array.isArray(data.events)) {
+        storedEventsData.value = data.events;
+        console.log("Veranstaltungen erfolgreich geladen:", storedEventsData.value);
+      } else {
+        console.error("Unerwartetes Datenformat:", data);
+      }
     })
-    .finally(() => {
-      console.log("storedEventsData nach Abruf:", storedEventsData.value);
+    .catch((error) => {
+      console.error("Fehler beim Laden der Veranstaltungen:", error);
     });
 }
+
 
 // Karte aktualisieren basierend auf der Auswahl
 function updateMap(event) {

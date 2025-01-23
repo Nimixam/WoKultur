@@ -16,12 +16,16 @@
           class="mb-2 p-3 bg-white shadow rounded cursor-pointer hover:bg-gray-200"
         >
           <h3 class="font-semibold">{{ event.title }}</h3>
-          <p class="text-sm">{{ event.beginndatum }} - {{ event.endedatum }}</p>
+          <p class="text-sm text-gray-700">{{ event.description || 'Keine Beschreibung verfügbar' }}</p>
+          <p class="text-sm text-gray-500">
+            {{ formatDate(event.start_date) }} - {{ formatDate(event.end_date) }}
+          </p>
         </li>
       </ul>
     </div>
   </section>
 </template>
+
 
 <script>
 import L from "leaflet";
@@ -29,33 +33,40 @@ import "leaflet/dist/leaflet.css";
 
 let eventLayer = null;
 
-export const loadEvents = (id) => {
-  fetch(`http://localhost:3000/events?id=${id}&ndays=${7}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data && Array.isArray(data.items)) {
-        if (eventLayer) eventLayer.clearLayers(); // Entferne alte Marker
-        data.items.forEach((event) => {
-          if (event.latitude && event.longitude) {
-            // Füge Marker hinzu
-            L.marker([event.latitude, event.longitude])
-              .addTo(eventLayer)
-              .bindPopup(`
-                <strong>${event.title}</strong><br>
-                <em>${event.beginndatum} bis ${event.endedatum}</em><br>
-                <p>${event.description || "Keine Beschreibung verfügbar"}</p>
-                <strong>Ort:</strong> ${event.veranstaltungsort || "Unbekannt"}<br>
-                <strong>Adresse:</strong> ${event.strasse || ""} ${event.hausnummer || ""}, ${event.plz || ""} ${event.ort || ""}<br>
-                <a href="${event.link}" target="_blank">Weitere Informationen</a>
-              `);
-          }
-        });
-      } else {
-        console.error("Datenformat nicht korrekt oder keine Veranstaltungen gefunden:", data);
-      }
-    })
-    .catch((error) => console.error("Fehler beim Abrufen der Veranstaltungen:", error));
+export const loadEvents = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/events');
+    const data = await response.json();
+
+    if (Array.isArray(data.events)) {
+      if (eventLayer) eventLayer.clearLayers(); // Entferne alte Marker
+
+      data.events.forEach((event) => {
+        if (event.location.latitude && event.location.longitude) {
+          // Füge Marker hinzu
+          L.marker([event.location.latitude, event.location.longitude])
+            .addTo(eventLayer)
+            .bindPopup(`
+              <strong>${event.title}</strong><br>
+              <em>${event.start_date} bis ${event.end_date}</em><br>
+              <p>${event.description || 'Keine Beschreibung verfügbar'}</p>
+              <strong>Ort:</strong> ${event.location.name || 'Unbekannt'}<br>
+              <strong>Adresse:</strong> ${event.location.address || ''}<br>
+            `);
+        }
+      });
+
+      return data.events;
+    } else {
+      console.error('Datenformat nicht korrekt oder keine Veranstaltungen gefunden:', data);
+    }
+  } catch (error) {
+    console.error('Fehler beim Abrufen der Veranstaltungen:', error);
+  }
+
+  return [];
 };
+
 
 export default {
   name: "EventsMap",
@@ -89,7 +100,7 @@ export default {
             .addTo(eventLayer)
             .bindPopup(`
               <strong>${event.title}</strong><br>
-              <em>${event.beginndatum} bis ${event.endedatum}</em><br>
+              <em>${event.start_date} bis ${event.end_date}</em><br>
               <p>${event.description || "Keine Beschreibung verfügbar"}</p>
               <strong>Ort:</strong> ${event.veranstaltungsort || "Unbekannt"}<br>
               <strong>Adresse:</strong> ${event.strasse || ""} ${event.hausnummer || ""}, ${event.plz || ""} ${event.ort || ""}<br>
@@ -105,6 +116,16 @@ export default {
         this.map.setView(marker.getLatLng(), 13); // Karte auf den Marker zentrieren
         marker.openPopup(); // Popup öffnen
       }
+    },
+    formatDate(dateString) {
+      if (!dateString) return "Unbekanntes Datum";
+      const date = new Date(dateString);
+      return date.toLocaleDateString("de-DE", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     },
   },
   mounted() {
