@@ -18,17 +18,11 @@ const toggleDarkMode = () => {
   document.documentElement.classList.toggle("dark", darkMode.value);
 };
 
-// Reaktive Zustände für Filter
-const currentCity = ref("14");
-const showFlexzones = ref(true);
+const filteredEvents = ref([]);
 
 // Event-Handler für Filter
-const handleCityChange = (newCity) => {
-  currentCity.value = newCity;
-};
-
-const handleToggleFlexzones = (isVisible) => {
-  showFlexzones.value = isVisible;
+const updateFilteredEvents = (events) => {
+  filteredEvents.value = events;
 };
 </script>
 
@@ -40,7 +34,7 @@ const handleToggleFlexzones = (isVisible) => {
 
     <Hero />
 
-    <Filter />
+    <Filter @updateFilteredEvents="updateFilteredEvents" />
 
     <!-- <div class="mt-10">
       <FilterView
@@ -55,7 +49,7 @@ const handleToggleFlexzones = (isVisible) => {
       <MapView :currentCity="currentCity" :showFlexzones="showFlexzones" />
     </div> -->
     
-    <EventsMap />
+    <EventsMap :filtered-events="filteredEvents" />
 
     <About />
 
