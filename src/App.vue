@@ -37,7 +37,6 @@ async function loadEvents() {
       // Wir mappen es auf ein internes Format: parseFloat für latitude/longitude
       const mapped = data.items.map((item, index) => ({
         // Falls die API kein "id" hat, erstellen wir eine pseudo-ID via index
-        kategorie_id: item.kategorie_id,
         id: index,
         title: item.title,
         description: item.description,
@@ -45,6 +44,7 @@ async function loadEvents() {
         end: item.endedatum,
         lat: parseFloat(item.latitude),
         lng: parseFloat(item.longitude),
+        location: `${item.strasse} ${item.hausnummer}`
       }));
 
       // Filtern wir optional nach gültigen lat/lng

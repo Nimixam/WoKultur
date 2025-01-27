@@ -82,6 +82,7 @@ function loadCategories() {
 function applyFilter() {
   if (!selectedCategory.value) {
     // Keine Kategorie = alle Events
+    filterCatMessage.value = '';
     emit('updateFilteredEvents', props.allEvents)
   } else {
     // Neue Kategorie-Route
@@ -97,12 +98,14 @@ function applyFilter() {
             begin: item.beginndatum,
             end: item.endedatum,
             lat: parseFloat(item.latitude),
-            lng: parseFloat(item.longitude)
+            lng: parseFloat(item.longitude),
+            location: `${item.strasse} ${item.hausnummer}`
           }))
 
           // Optional: Filtern nach validen Koordinaten
           const valid = mapped.filter(ev => !isNaN(ev.lat) && !isNaN(ev.lng))
 
+          filterCatMessage.value = '';
           // Jetzt emitten wir das gefilterte Array
           emit('updateFilteredEvents', valid)
         } else {

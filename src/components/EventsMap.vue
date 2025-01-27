@@ -22,6 +22,9 @@
           <p class="text-sm text-gray-500 dark:text-gray-400">
             {{ formatDate(event.begin) }} - {{ formatDate(event.end) }}
           </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {{ "Ort: " + event.location || "" }}
+          </p>
         </li>
       </ul>
     </div>
