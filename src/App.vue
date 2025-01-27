@@ -42,13 +42,19 @@ async function loadEvents(days = daysToFilter.value) {
       const mapped = data.items.map((item, index) => ({
         // Falls die API kein "id" hat, erstellen wir eine pseudo-ID via index
         id: index,
-        title: item.title,
-        description: item.description,
-        begin: item.beginndatum,
-        end: item.endedatum,
-        lat: parseFloat(item.latitude),
-        lng: parseFloat(item.longitude),
-        location: `${item.strasse} ${item.hausnummer}`
+            title: item.title,
+            description: item.description,
+            begin: item.beginndatum,
+            end: item.endedatum,
+            time: item.uhrzeit,
+            lat: parseFloat(item.latitude),
+            lng: parseFloat(item.longitude),
+            location: item.veranstaltungsort,
+            address: `${item.strasse} ${item.hausnummer}`,
+            district: item.stadtteil,
+            price: item.preis,
+            link: item.link,
+            img: item.teaserbild
       }));
 
       // Filtern wir optional nach gültigen lat/lng
@@ -101,7 +107,7 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
         class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
         @click="toggleFilter"
       >
-        Filter anzeigen
+      {{ isFilterOpen ? 'Filter ausblenden' : 'Filter einblenden' }}
       </button>
     </div>
 

@@ -148,9 +148,15 @@ function applyFilter() {
             description: item.description,
             begin: item.beginndatum,
             end: item.endedatum,
+            time: item.uhrzeit,
             lat: parseFloat(item.latitude),
             lng: parseFloat(item.longitude),
-            location: `${item.strasse} ${item.hausnummer}`
+            location: item.veranstaltungsort,
+            address: `${item.strasse} ${item.hausnummer}`,
+            district: item.stadtteil,
+            price: item.preis,
+            link: item.link,
+            img: item.teaserbild
           }))
 
           // Optional: Filtern nach validen Koordinaten
