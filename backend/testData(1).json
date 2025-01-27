@@ -1,0 +1,50 @@
+{
+    "events": [
+      {
+        "id": "1",
+        "title": "Stadtführung: Historisches Köln",
+        "description": "Eine spannende Führung durch die Altstadt mit historischen Anekdoten.",
+        "start_date": "2025-02-01T14:00:00",
+        "end_date": "2025-02-01T16:00:00",
+        "location": {
+          "name": "Altstadt Köln",
+          "address": "Domkloster 4, 50667 Köln",
+          "latitude": 50.941278,
+          "longitude": 6.958281
+        },
+        "category": "Führung",
+        "tags": ["Geschichte", "Tourismus", "Altstadt"]
+      },
+      {
+        "id": "2",
+        "title": "Konzert: Philharmonie Köln",
+        "description": "Ein Abend mit klassischer Musik und internationalen Künstlern.",
+        "start_date": "2025-02-05T19:30:00",
+        "end_date": "2025-02-05T22:00:00",
+        "location": {
+          "name": "Kölner Philharmonie",
+          "address": "Bischofsgartenstraße 1, 50667 Köln",
+          "latitude": 50.941303,
+          "longitude": 6.9
+        },
+        "category": "Musik",
+        "tags": ["Konzert", "Philharmonie", "Klassik"]
+      },
+      {
+        "id": "3",
+        "title": "Kunst-Ausstellung: Moderne Malerei",
+        "description": "Entdecken Sie moderne Kunstwerke von regionalen Künstlern.",
+        "start_date": "2025-02-10T10:00:00",
+        "end_date": "2025-02-10T18:00:00",
+        "location": {
+          "name": "Museum Ludwig",
+          "address": "Heinrich-Böll-Platz, 50667 Köln",
+          "latitude": 50.93,
+          "longitude": 6.96
+        },
+        "category": "Kunst",
+        "tags": ["Kunst", "Ausstellung", "Museum"]
+      }
+    ]
+  }
+  

@@ -1,51 +1,45 @@
+// server.js
+
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+const fetch = require('node-fetch'); // v2 (CommonJS-kompatibel)
 
 const app = express();
-const port = 3000;
-
 app.use(cors());
 
-// Middleware für Fehlerprotokollierung
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
-// Endpunkt: Veranstaltungen aus lokaler JSON-Datei
-app.get('/events', (req, res) => {
-  const jsonPath = path.join(__dirname, 'testData.json');
+// Proxy-Endpoint für Events
+app.get('/api/events', async (req, res) => {
   try {
-    const jsonData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    // Bitte HTTPS nutzen, um 301-Redirects zu vermeiden
+    const response = await fetch(
+      'https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=14'
+    );
+    const rawText = await response.text();
+    const jsonData = JSON.parse(rawText);
+    // jsonData => { success: true, items: [...], count: NN }
+
     res.json(jsonData);
   } catch (error) {
-    console.error('Fehler beim Lesen der JSON-Datei:', error.message);
-    res.status(500).json({ error: 'Fehler beim Abrufen der Veranstaltungen' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/categories', (req, res) => {
-  const jsonPath = path.join(__dirname, 'testData.json');
+// Proxy-Endpoint für Kategorien
+app.get('/api/categories', async (req, res) => {
   try {
-    const jsonData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    const response = await fetch(
+      'https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?type=listkat'
+    );
+    const rawText = await response.text();
+    const jsonData = JSON.parse(rawText);
+    // { success: true, items: [...], count: NN }
 
-    // Kategorien dynamisch aus den Events ableiten
-    const categories = jsonData.events.reduce((acc, event) => {
-      if (event.category && !acc.some((cat) => cat.name === event.category)) {
-        acc.push({ id: acc.length + 1, name: event.category }); // ID basierend auf Index
-      }
-      return acc;
-    }, []);
-
-    res.json({ items: categories });
+    res.json(jsonData);
   } catch (error) {
-    console.error('Fehler beim Lesen der JSON-Datei für Kategorien:', error.message);
-    res.status(500).json({ error: 'Fehler beim Abrufen der Kategorien' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+app.listen(3000, () => {
+  console.log('Proxy-Server läuft auf Port 3000');
 });

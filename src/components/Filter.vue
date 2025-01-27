@@ -14,16 +14,16 @@
         <select
           id="kat-filter"
           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-green-500 dark:focus:border-green-500"
-          @change="filterEventsByCategory"
           v-model="selectedCategory"
+          @change="applyFilter"
         >
-          <option value="" selected>Alle Kategorien</option>
+          <option value="">Alle Kategorien</option>
           <option
-            v-for="category in categoryData"
-            :key="category.id"
-            :value="category.name"
+            v-for="cat in categoryData"
+            :key="cat.id"
+            :value="cat.id"
           >
-            {{ category.name }}
+            {{ cat.name }}
           </option>
         </select>
       </form>
@@ -32,62 +32,54 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, defineProps, defineEmits } from 'vue'
 
-// Definiere das Event, das an die Elternkomponente emittiert wird
-const emit = defineEmits(["updateFilteredEvents"]);
+const props = defineProps({
+  allEvents: {
+    type: Array,
+    default: () => []
+  }
+})
+const emit = defineEmits(['updateFilteredEvents'])
 
-// Daten für Filter
-const categoryData = ref([]);
-const storedEventsData = ref([]);
-const filteredEvents = ref([]);
-const selectedCategory = ref("");
+const categoryData = ref([])
+const selectedCategory = ref('')
 
-// Kategorien laden
-getCategory();
-fetchEvents();
+// Beim Start Kategorien laden
+onMounted(() => {
+  loadCategories()
+})
 
-// Kategorien abrufen
-function getCategory() {
-  fetch("http://localhost:3000/categories")
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+// API-Aufruf für Kategorien
+function loadCategories() {
+  fetch('http://localhost:3000/api/categories')
+    .then(res => res.json())
+    .then(data => {
+      console.log('Kategorien-Daten:', data)
+      // { success: true, items: [...], count: NN }
+      if (data.success && Array.isArray(data.items)) {
+        categoryData.value = data.items.map(item => ({
+          id: item.id,
+          name: item.kategorie
+        }))
+      } else {
+        console.error('Categories result is not an array or no success:', data)
       }
-      return response.json();
     })
-    .then((data) => {
-      if (data && Array.isArray(data.items)) {
-        categoryData.value = data.items;
-      }
-    })
-    .catch((error) => console.error("Fehler beim Abrufen der Kategorien:", error));
+    .catch(err => console.error('Fehler beim Laden der Kategorien:', err))
 }
 
-// Events abrufen
-function fetchEvents() {
-  fetch("http://localhost:3000/events")
-    .then((response) => response.json())
-    .then((data) => {
-      if (Array.isArray(data.events)) {
-        storedEventsData.value = data.events;
-        filteredEvents.value = data.events;
-        emit("updateFilteredEvents", filteredEvents.value); // Standardmäßig alle Events
-      }
-    })
-    .catch((error) => console.error("Fehler beim Abrufen der Veranstaltungen:", error));
-}
-
-// Veranstaltungen nach Kategorie filtern
-function filterEventsByCategory() {
+// Filter anwenden
+function applyFilter() {
   if (!selectedCategory.value) {
-    filteredEvents.value = storedEventsData.value;
-    emit("updateFilteredEvents", filteredEvents.value); // Alle Events anzeigen
+    // Keine Kategorie = alle Events
+    emit('updateFilteredEvents', props.allEvents)
   } else {
-    filteredEvents.value = storedEventsData.value.filter(
-      (event) => event.category === selectedCategory.value
-    );
-    emit("updateFilteredEvents", filteredEvents.value); // Gefilterte Events emittieren
+    // Filtern
+    const filtered = props.allEvents.filter(
+      e => e.kategorie_id == selectedCategory.value
+    )
+    emit('updateFilteredEvents', filtered)
   }
 }
 </script>
