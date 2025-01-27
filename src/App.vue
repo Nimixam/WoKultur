@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { watch } from 'vue'
 
 import Navbar from './components/Navbar.vue'
 import Hero from './components/Hero.vue'
@@ -26,10 +27,13 @@ const toggleFilter = () => {
   isFilterOpen.value = !isFilterOpen.value
 }
 
+const filterCatMessage = ref('') // Nachricht für fehlende Events
+const daysToFilter = ref(14) // Standardwert für den Slider
+
 // Events laden (z.B. nächste 14 Tage)
-async function loadEvents() {
+async function loadEvents(days = daysToFilter.value) {
   try {
-    const response = await fetch('http://localhost:3000/api/events')
+    const response = await fetch(`http://localhost:3000/api/events?ndays=${days}`)
     const data = await response.json()
 
     // data => { success: true, items: [...], count: NN }
@@ -49,12 +53,22 @@ async function loadEvents() {
 
       // Filtern wir optional nach gültigen lat/lng
       const valid = mapped.filter(ev => !isNaN(ev.lat) && !isNaN(ev.lng))
+
+      if (valid.length === 0) {
+        // Wenn keine Events gefunden wurden
+        filterCatMessage.value = 'Es gibt keine Events mit dem Filter'
+      } else {
+        filterCatMessage.value = '' // Nachricht zurücksetzen
+      }
+
       allEvents.value = valid
       filteredEvents.value = valid
     } else {
+      filterCatMessage.value = 'Es gibt keine Events mit dem Filter'
       console.error('Unerwartetes Format für Events:', data)
     }
   } catch (error) {
+    filterCatMessage.value = 'Fehler beim Laden der Events'
     console.error('Fehler beim Laden der Events:', error)
   }
 }
@@ -66,6 +80,15 @@ const updateFilteredEvents = (arr) => {
 
 // Lade die Events, sobald App gemountet ist
 loadEvents()
+
+// Überwache die Events-Arrays
+watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
+  if (newAllEvents.length === 0 || newFilteredEvents.length === 0) {
+    filterCatMessage.value = 'Es gibt keine Events mit dem Filter'
+  } else {
+    filterCatMessage.value = '' // Nachricht zurücksetzen, wenn es Events gibt
+  }
+})
 </script>
 
 <template>
@@ -106,8 +129,17 @@ loadEvents()
           <h2 class="text-lg font-bold mb-2">Filter</h2>
           <Filter
             :allEvents="allEvents"
+            :filterCatMessage="filterCatMessage"
+            :daysToFilter="daysToFilter"
             @updateFilteredEvents="updateFilteredEvents"
+            @reloadEvents="loadEvents"
           />
+          <p
+            v-if="filterCatMessage"
+            class="text-red-600 dark:text-red-400"
+          >
+            {{ filterCatMessage }}
+          </p>
         </div>
       </transition>
     </div>

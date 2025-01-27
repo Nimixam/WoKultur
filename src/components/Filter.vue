@@ -1,10 +1,41 @@
 <template>
   <section>
     <div class="w-full px-4">
-      <h1 class="text-2xl font-bold mb-4">Meine Timeline</h1>
+      <h1 class="text-2xl font-bold mb-4">Zeitraum</h1>
+
+      <!-- Zeitraum-Slider -->
+      <div class="mb-4">
+        <label
+          for="days-slider"
+          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+        >
+          Zeitraum: {{ localDaysToFilter }} Tage
+        </label>
+        <input
+          id="days-slider"
+          type="range"
+          min="1"
+          max="30"
+          v-model="localDaysToFilter"
+          class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          @change="onSliderChange"
+        />
+      </div>
+
+      <!-- Button: Kategorien-Filter ein-/ausklappen -->
+      <button
+        class="px-4 py-2 mb-4 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
+        @click="toggleCategoryFilter"
+      >
+        {{ isCategoryFilterOpen ? 'Kategorien ausblenden' : 'Kategorien anzeigen' }}
+      </button>
 
       <!-- Kategorie-Filter -->
-      <form class="filter-container" id="filter">
+      <form
+        v-if="isCategoryFilterOpen"
+        class="filter-container"
+        id="filter"
+      >
         <label
           for="kat-filter"
           class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
@@ -27,13 +58,6 @@
           </option>
         </select>
       </form>
-      <!-- Meldung bei fehlenden Events -->
-      <p
-        v-if="filterCatMessage"
-        class="mt-2 text-red-600 dark:text-red-400"
-      >
-        {{ filterCatMessage }}
-      </p>
     </div>
   </section>
 </template>
@@ -45,14 +69,23 @@ const props = defineProps({
   allEvents: {
     type: Array,
     default: () => []
+  },
+  filterCatMessage: {
+    type: String,
+    default: ''
+  },
+  daysToFilter: {
+    type: Number,
+    required: true
   }
 })
-const emit = defineEmits(['updateFilteredEvents'])
+const emit = defineEmits(['updateFilteredEvents', 'reloadEvents'])
 
 const categoryData = ref([])
 const selectedCategory = ref('')
 
-const filterCatMessage = ref('')
+const isCategoryFilterOpen = ref(false) // Status für das Anzeigen des Kategorie-Filters
+const localDaysToFilter = ref(props.daysToFilter) // Lokale Kopie der Prop
 
 // Beim Start Kategorien laden
 onMounted(() => {
@@ -78,6 +111,18 @@ function loadCategories() {
     .catch(err => console.error('Fehler beim Laden der Kategorien:', err))
 }
 
+function onSliderChange() {
+  if (isCategoryFilterOpen.value) {
+    applyFilter() // Wenn der Kategorie-Filter geöffnet ist
+  } else {
+    emit('reloadEvents', localDaysToFilter.value) // Ansonsten lade Events mit dem Slider-Wert
+  }
+}
+
+function toggleCategoryFilter() {
+  isCategoryFilterOpen.value = !isCategoryFilterOpen.value
+}
+
 // Filter anwenden
 function applyFilter() {
   if (!selectedCategory.value) {
@@ -86,7 +131,7 @@ function applyFilter() {
     emit('updateFilteredEvents', props.allEvents)
   } else {
     // Neue Kategorie-Route
-    fetch(`http://localhost:3000/api/eventsByCategory?kat=${selectedCategory.value}`)
+    fetch(`http://localhost:3000/api/eventsByCategory?kat=${selectedCategory.value}&ndays=${props.daysToFilter.value}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.items)) {
@@ -105,18 +150,15 @@ function applyFilter() {
           // Optional: Filtern nach validen Koordinaten
           const valid = mapped.filter(ev => !isNaN(ev.lat) && !isNaN(ev.lng))
 
-          filterCatMessage.value = '';
           // Jetzt emitten wir das gefilterte Array
           emit('updateFilteredEvents', valid)
         } else {
           // Keine Events oder Fehler
-          filterCatMessage.value = 'Keine Events im angegebenen Zeitraum'
           emit('updateFilteredEvents', [])
         }
       })
       .catch(err => {
         console.error('Fehler beim Laden der Kategoriendaten:', err)
-        filterCatMessage.value = 'Keine Events im angegebenen Zeitraum (Fehler)'
         // Ggf. leeres Array weitergeben
         emit('updateFilteredEvents', [])
       });
