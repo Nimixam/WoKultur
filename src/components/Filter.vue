@@ -131,7 +131,7 @@ function applyFilter() {
     emit('updateFilteredEvents', props.allEvents)
   } else {
     // Neue Kategorie-Route
-    fetch(`http://localhost:3000/api/eventsByCategory?kat=${selectedCategory.value}&ndays=${props.daysToFilter.value}`)
+    fetch(`http://localhost:3000/api/eventsByCategory?kat=${selectedCategory.value}&ndays=${localDaysToFilter.value}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.items)) {

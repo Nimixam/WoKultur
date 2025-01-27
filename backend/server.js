@@ -10,14 +10,14 @@ app.use(cors());
 // Proxy-Endpoint für Events
 app.get('/api/events', async (req, res) => {
   try {
-    // Bitte HTTPS nutzen, um 301-Redirects zu vermeiden
+    // Lese Query-Parameter ndays (Standard: 14)
+    const { ndays = 14 } = req.query;
+
     const response = await fetch(
-      'https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=14'
+      `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=${ndays}`
     );
     const rawText = await response.text();
     const jsonData = JSON.parse(rawText);
-    // jsonData => { success: true, items: [...], count: NN }
-
     res.json(jsonData);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -43,27 +43,22 @@ app.get('/api/categories', async (req, res) => {
 
 app.get('/api/eventsByCategory', async (req, res) => {
   try {
-    const { kat } = req.query
-    // Du kannst hier optional auch ndays übergeben oder fest codieren (z.B. 14).
-
+    const { kat, ndays = 14 } = req.query; // Lese kat und ndays
     if (!kat) {
       return res.status(400).json({ success: false, error: 'Missing "kat" parameter' })
     }
 
-    // Z. B. immer 14 Tage
-    const url = `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${kat}&ndays=14`
+    const url = `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${kat}&ndays=${ndays}`
     const response = await fetch(url)
-    console.log(response)
     const rawText = await response.text()
     const jsonData = JSON.parse(rawText)
 
-    // { success: true, items: [...], count: NN }
     res.json(jsonData)
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, error: error.message })
   }
-})
+});
 
 app.listen(3000, () => {
   console.log('Proxy-Server läuft auf Port 3000');
