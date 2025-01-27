@@ -120,7 +120,13 @@ function onSliderChange() {
 }
 
 function toggleCategoryFilter() {
-  isCategoryFilterOpen.value = !isCategoryFilterOpen.value
+  isCategoryFilterOpen.value = !isCategoryFilterOpen.value;
+
+  if (!isCategoryFilterOpen.value) {
+    // Kategorie-Filter wurde geschlossen → Alle Events neu laden
+    selectedCategory.value = '';
+    emit('reloadEvents', localDaysToFilter.value);
+  }
 }
 
 // Filter anwenden
