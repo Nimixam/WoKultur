@@ -37,6 +37,7 @@ async function loadEvents() {
       // Wir mappen es auf ein internes Format: parseFloat für latitude/longitude
       const mapped = data.items.map((item, index) => ({
         // Falls die API kein "id" hat, erstellen wir eine pseudo-ID via index
+        kategorie_id: item.kategorie_id,
         id: index,
         title: item.title,
         description: item.description,
@@ -87,7 +88,7 @@ loadEvents()
         :class="isFilterOpen ? 'w-3/4' : 'w-full'"
       >
         <!-- Übergebe gefilterte Events an die Kartenkomponente -->
-        <EventsMap :filtered-events="filteredEvents" />
+        <EventsMap :filteredEvents="filteredEvents" />
       </div>
 
       <transition

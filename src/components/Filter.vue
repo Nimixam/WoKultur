@@ -27,6 +27,13 @@
           </option>
         </select>
       </form>
+      <!-- Meldung bei fehlenden Events -->
+      <p
+        v-if="filterCatMessage"
+        class="mt-2 text-red-600 dark:text-red-400"
+      >
+        {{ filterCatMessage }}
+      </p>
     </div>
   </section>
 </template>
@@ -44,6 +51,8 @@ const emit = defineEmits(['updateFilteredEvents'])
 
 const categoryData = ref([])
 const selectedCategory = ref('')
+
+const filterCatMessage = ref('')
 
 // Beim Start Kategorien laden
 onMounted(() => {
@@ -75,11 +84,39 @@ function applyFilter() {
     // Keine Kategorie = alle Events
     emit('updateFilteredEvents', props.allEvents)
   } else {
-    // Filtern
-    const filtered = props.allEvents.filter(
-      e => e.kategorie_id == selectedCategory.value
-    )
-    emit('updateFilteredEvents', filtered)
+    // Neue Kategorie-Route
+    fetch(`http://localhost:3000/api/eventsByCategory?kat=${selectedCategory.value}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.items)) {
+          // Mappen wie in App.vue
+          const mapped = data.items.map((item, index) => ({
+            id: index,
+            title: item.title,
+            description: item.description,
+            begin: item.beginndatum,
+            end: item.endedatum,
+            lat: parseFloat(item.latitude),
+            lng: parseFloat(item.longitude)
+          }))
+
+          // Optional: Filtern nach validen Koordinaten
+          const valid = mapped.filter(ev => !isNaN(ev.lat) && !isNaN(ev.lng))
+
+          // Jetzt emitten wir das gefilterte Array
+          emit('updateFilteredEvents', valid)
+        } else {
+          // Keine Events oder Fehler
+          filterCatMessage.value = 'Keine Events im angegebenen Zeitraum'
+          emit('updateFilteredEvents', [])
+        }
+      })
+      .catch(err => {
+        console.error('Fehler beim Laden der Kategoriendaten:', err)
+        filterCatMessage.value = 'Keine Events im angegebenen Zeitraum (Fehler)'
+        // Ggf. leeres Array weitergeben
+        emit('updateFilteredEvents', [])
+      });
   }
 }
 </script>

@@ -40,6 +40,31 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
+
+app.get('/api/eventsByCategory', async (req, res) => {
+  try {
+    const { kat } = req.query
+    // Du kannst hier optional auch ndays übergeben oder fest codieren (z.B. 14).
+
+    if (!kat) {
+      return res.status(400).json({ success: false, error: 'Missing "kat" parameter' })
+    }
+
+    // Z. B. immer 14 Tage
+    const url = `https://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?kat=${kat}&ndays=14`
+    const response = await fetch(url)
+    console.log(response)
+    const rawText = await response.text()
+    const jsonData = JSON.parse(rawText)
+
+    // { success: true, items: [...], count: NN }
+    res.json(jsonData)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
 app.listen(3000, () => {
   console.log('Proxy-Server läuft auf Port 3000');
 });
