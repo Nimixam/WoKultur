@@ -150,6 +150,9 @@ export default {
 
         this.markers.set(event.id, marker);
       });
+
+      // Aktualisiere die Kartendarstellung
+      this.map.invalidateSize();
     },
 
     addHeatmap() {

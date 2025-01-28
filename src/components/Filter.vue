@@ -77,8 +77,12 @@ const props = defineProps({
   daysToFilter: {
     type: Number,
     required: true
+  },
+  selectedCategory: {
+    type: String,
+    default: '' // Die Kategorie wird von App.vue übergeben
   }
-})
+});
 const emit = defineEmits(['updateFilteredEvents', 'reloadEvents'])
 
 const categoryData = ref([])
@@ -133,7 +137,6 @@ function toggleCategoryFilter() {
 function applyFilter() {
   if (!selectedCategory.value) {
     // Keine Kategorie = alle Events
-    filterCatMessage.value = '';
     emit('updateFilteredEvents', props.allEvents)
   } else {
     // Neue Kategorie-Route

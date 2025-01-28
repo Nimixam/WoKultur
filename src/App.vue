@@ -21,6 +21,8 @@ const toggleDarkMode = () => {
 const filteredEvents = ref([])
 const allEvents = ref([])
 
+const selectedCategory = ref(''); // Aktuell ausgewählte Kategorie
+
 // Filter-Sidebar
 const isFilterOpen = ref(false)
 const toggleFilter = () => {
@@ -31,6 +33,48 @@ const filterCatMessage = ref('') // Nachricht für fehlende Events
 const daysToFilter = ref(14) // Standardwert für den Slider
 
 const showHeatmap = ref(false);
+
+const searchQuery = ref(''); // Suchbegriff
+const isSearching = ref(false); // Lade-Status
+let searchTimeout; // Timeout für das Debouncing
+
+const performSearch = (arr = null) => {
+  const eventsToFilter = arr || (selectedCategory.value ? filteredEvents.value : allEvents.value);
+
+  // Filtere Events nach Titel und Beschreibung
+  filteredEvents.value = eventsToFilter.filter(event =>
+    (event.title?.toLowerCase().includes(searchQuery.value.toLowerCase().trim()) ||
+     event.description?.toLowerCase().includes(searchQuery.value.toLowerCase().trim()))
+  );
+  isSearching.value = false;
+};
+
+const onSearchInput = () => {
+  isSearching.value = true;
+  clearTimeout(searchTimeout);
+
+  searchTimeout = setTimeout(() => {
+    const query = searchQuery.value.trim();
+
+    if (query) {
+      // Wenn eine Kategorie ausgewählt ist, suche in filteredEvents
+      if (selectedCategory.value) {
+        performSearch();
+      } else {
+        // Ansonsten suche in allEvents
+        performSearch();
+      }
+    } else {
+      // Wenn Such-Query leer, setze die Filterungen zurück
+      if (selectedCategory.value) {
+        applyFilter(); // Kategorienfilter erneut anwenden
+      } else {
+        filteredEvents.value = [...allEvents.value]; // Alle Events anzeigen
+      }
+    }
+    isSearching.value = false;
+  }, 1000); // 1 Sekunde warten
+};
 
 // Events laden (z.B. nächste 14 Tage)
 async function loadEvents(days = daysToFilter.value) {
@@ -70,7 +114,12 @@ async function loadEvents(days = daysToFilter.value) {
       }
 
       allEvents.value = valid
-      filteredEvents.value = valid
+
+      if (searchQuery.value.trim()) {
+        performSearch();
+      } else {
+        filteredEvents.value = valid
+      }
     } else {
       filterCatMessage.value = 'Es gibt keine Events mit dem Filter'
       console.error('Unerwartetes Format für Events:', data)
@@ -83,7 +132,11 @@ async function loadEvents(days = daysToFilter.value) {
 
 // Callback vom Filter, um das gefilterte Array zu setzen
 const updateFilteredEvents = (arr) => {
-  filteredEvents.value = arr
+  if (searchQuery.value.trim()) {
+        performSearch(arr);
+      } else {
+        filteredEvents.value = arr
+      }
 }
 
 // Lade die Events, sobald App gemountet ist
@@ -103,6 +156,24 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
   <div class="min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white">
     <Navbar :darkMode="darkMode" @toggleDarkMode="toggleDarkMode" />
     <Hero />
+
+    <div class="flex justify-center items-center mt-4">
+      <div class="relative w-1/2">
+        <input
+          type="text"
+          v-model="searchQuery"
+          @input="onSearchInput"
+          placeholder="Events durchsuchen"
+          class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+        />
+        <div v-if="isSearching" class="absolute right-2 top-2">
+          <svg class="animate-spin h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
 
     <div class="flex flex-col items-end mt-4 mr-4 space-y-2">
       <!-- Filter-Button -->
@@ -153,6 +224,7 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
             :allEvents="allEvents"
             :filterCatMessage="filterCatMessage"
             :daysToFilter="daysToFilter"
+            v-model:selectedCategory="selectedCategory"
             @updateFilteredEvents="updateFilteredEvents"
             @reloadEvents="loadEvents"
           />
