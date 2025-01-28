@@ -12,6 +12,7 @@
         <li
           v-for="(event, index) in filteredEvents"
           :key="event.id"
+          :id="'event-' + event.id"
           @click="focusOnEvent(event)"
           class="mb-2 p-3 bg-white shadow rounded hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer"
         >
@@ -123,6 +124,14 @@ export default {
                 ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
                 : ''
             }
+            <button 
+              class="flex items-center justify-end text-gray-500 font-bold mt-2 cursor-pointer w-full"
+              title="Zur Liste springen"
+              data-event-id="${event.id}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         `;
 
@@ -130,6 +139,15 @@ export default {
           .bindPopup(popupContent);
 
         marker.addTo(this.map);
+        
+        // Füge einen Click-Listener hinzu, wenn das Popup geöffnet wird
+        marker.on('popupopen', () => {
+          const button = document.querySelector(`[data-event-id="${event.id}"]`);
+          if (button) {
+            button.addEventListener('click', () => this.scrollToList(event.id));
+          }
+        });
+
         this.markers.set(event.id, marker);
       });
     },
@@ -177,6 +195,17 @@ export default {
       if (marker) {
         this.map.flyTo(marker.getLatLng(), 15)
         marker.openPopup()
+      }
+    },
+    scrollToList(eventId) {
+      const safeId = `event-${eventId}`;
+      const listItem = document.getElementById(safeId); // Element in der Liste finden
+      if (listItem) {
+        listItem.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Smooth-Scroll
+        listItem.classList.add('highlight'); // Highlight hinzufügen
+        setTimeout(() => {
+          listItem.classList.remove('highlight'); // Highlight nach 2 Sekunden entfernen
+        }, 2000);
       }
     },
     toggleDetails(index) {
@@ -230,5 +259,10 @@ export default {
 }
 .leaflet-container {
   z-index: 0 !important;
+}
+
+.highlight {
+  background-color: #f0f0f0; /* Helles Grau */
+  transition: background-color 0.3s ease;
 }
 </style>
