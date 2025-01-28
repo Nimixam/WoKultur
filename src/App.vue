@@ -30,6 +30,8 @@ const toggleFilter = () => {
 const filterCatMessage = ref('') // Nachricht für fehlende Events
 const daysToFilter = ref(14) // Standardwert für den Slider
 
+const showHeatmap = ref(false);
+
 // Events laden (z.B. nächste 14 Tage)
 async function loadEvents(days = daysToFilter.value) {
   try {
@@ -102,13 +104,27 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
     <Navbar :darkMode="darkMode" @toggleDarkMode="toggleDarkMode" />
     <Hero />
 
-    <div class="flex justify-end mt-4 mr-4">
+    <div class="flex flex-col items-end mt-4 mr-4 space-y-2">
+      <!-- Filter-Button -->
       <button
         class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
         @click="toggleFilter"
       >
-      {{ isFilterOpen ? 'Filter ausblenden' : 'Filter einblenden' }}
+        {{ isFilterOpen ? 'Filter ausblenden' : 'Filter einblenden' }}
       </button>
+
+      <!-- Heatmap-Checkbox -->
+      <div class="flex items-center">
+        <input
+          type="checkbox"
+          id="heatmap-toggle"
+          v-model="showHeatmap"
+          class="mr-2 cursor-pointer"
+        />
+        <label for="heatmap-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
+          Heatmap anzeigen
+        </label>
+      </div>
     </div>
 
     <div class="relative flex transition-all duration-300 mt-4" style="height: 60vh;">
@@ -117,7 +133,7 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
         :class="isFilterOpen ? 'w-3/4' : 'w-full'"
       >
         <!-- Übergebe gefilterte Events an die Kartenkomponente -->
-        <EventsMap :filteredEvents="filteredEvents" />
+        <EventsMap :filteredEvents="filteredEvents" :showHeatmap="showHeatmap" />
       </div>
 
       <transition

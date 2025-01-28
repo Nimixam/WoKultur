@@ -52,6 +52,7 @@
 <script>
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.heat';
 
 export default {
   name: 'EventsMap',
@@ -59,12 +60,17 @@ export default {
     filteredEvents: {
       type: Array,
       default: () => []
+    },
+    showHeatmap: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
     return {
       map: null,
       markers: new Map(),
+      heatLayer: null,
       expandedIndices: [] // Array, um zu verfolgen, welche Events erweitert sind
     }
   },
@@ -128,6 +134,44 @@ export default {
       });
     },
 
+    addHeatmap() {
+      if (!this.filteredEvents.length) return;
+
+      const heatmapData = this.filteredEvents.map(event => [
+        event.lat, // Latitude
+        event.lng, // Longitude
+        0.2        // Gewicht reduzieren (Standard ist 1)
+      ]);
+
+      if (this.heatLayer) {
+        this.map.removeLayer(this.heatLayer);
+      }
+
+      this.heatLayer = L.heatLayer(heatmapData, {
+        radius: 50,     // Größe der Punkte
+        blur: 25,       // Unschärfe um die Punkte
+        max: 0.3,       // Maximale Intensität weiter reduzieren
+        maxZoom: 10,    // Heatmap wird nicht zu stark bei Zoom sichtbar
+        minOpacity: 0.1, // Mindestsichtbarkeit der Heatmap
+        gradient: {
+          0.2: 'blue',
+          0.4: 'purple',
+          0.6: 'violet',
+          0.8: 'magenta',
+          1.0: 'red'
+        }
+      });
+
+      this.map.addLayer(this.heatLayer);
+    },
+
+    removeHeatmap() {
+      if (this.heatLayer) {
+        this.map.removeLayer(this.heatLayer);
+        this.heatLayer = null;
+      }
+    },
+
     focusOnEvent(event) {
       const marker = this.markers.get(event.id)
       if (marker) {
@@ -148,6 +192,16 @@ export default {
       handler() {
         if (this.map) {
           this.addMarkersToMap()
+        }
+      },
+      immediate: true
+    },
+    showHeatmap: {
+      handler(newVal) {
+        if (newVal) {
+          this.addHeatmap();
+        } else {
+          this.removeHeatmap();
         }
       },
       immediate: true
