@@ -5,55 +5,29 @@
 
       <!-- Zeitraum-Slider -->
       <div class="mb-4">
-        <label
-          for="days-slider"
-          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-        >
+        <label for="days-slider" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
           Zeitraum: {{ localDaysToFilter }} Tage
         </label>
-        <input
-          id="days-slider"
-          type="range"
-          min="1"
-          max="30"
-          v-model="localDaysToFilter"
-          class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-          @change="onSliderChange"
-        />
+        <input id="days-slider" type="range" min="1" max="30" v-model.number="localDaysToFilter"
+          class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
       </div>
 
-      <!-- Button: Kategorien-Filter ein-/ausklappen -->
-      <button
-        class="px-4 py-2 mb-4 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
-        @click="toggleCategoryFilter"
-      >
-        {{ isCategoryFilterOpen ? 'Kategorien ausblenden' : 'Kategorien anzeigen' }}
+      <!-- Button: Filter zurücksetzen -->
+      <button class="px-4 py-2 mb-4 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
+        @click="resetFilter">
+        Filter zurücksetzen
       </button>
 
       <!-- Kategorie-Filter -->
-      <form
-        v-if="isCategoryFilterOpen"
-        class="filter-container"
-        id="filter"
-      >
-        <label
-          for="kat-filter"
-          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-        >
+      <form class="filter-container" id="filter">
+        <label for="kat-filter" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
           Kategorie wählen:
         </label>
-        <select
-          id="kat-filter"
+        <select id="kat-filter"
           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-green-500 dark:focus:border-green-500"
-          v-model="selectedCategory"
-          @change="applyFilter"
-        >
+          v-model="localSelectedCategory">
           <option value="">Alle Kategorien</option>
-          <option
-            v-for="cat in categoryData"
-            :key="cat.id"
-            :value="cat.id"
-          >
+          <option v-for="cat in categoryData" :key="cat.id" :value="cat.id">
             {{ cat.name }}
           </option>
         </select>
@@ -63,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineProps, defineEmits } from 'vue'
+import { ref, onMounted, defineProps, defineEmits, watch } from 'vue'
 
 const props = defineProps({
   allEvents: {
@@ -80,18 +54,29 @@ const props = defineProps({
   },
   selectedCategory: {
     type: String,
-    default: '' // Die Kategorie wird von App.vue übergeben
+    default: ''
   }
 });
-const emit = defineEmits(['updateFilteredEvents', 'reloadEvents'])
+
+const emit = defineEmits(['reloadEvents', 'update:daysToFilter', 'update:selectedCategory'])
 
 const categoryData = ref([])
-const selectedCategory = ref('')
 
-const isCategoryFilterOpen = ref(false) // Status für das Anzeigen des Kategorie-Filters
-const localDaysToFilter = ref(props.daysToFilter) // Lokale Kopie der Prop
+// lokale Kopien der Props
+const localDaysToFilter = ref(props.daysToFilter)
+const localSelectedCategory = ref(props.selectedCategory)
 
-// Beim Start Kategorien laden
+// Watcher, der beide lokalen Werte beobachtet und bei Änderungen an den Parent weitergibt
+watch(
+  [localDaysToFilter, localSelectedCategory],
+  ([newDays, newCategory]) => {
+    emit('update:daysToFilter', newDays)
+    emit('update:selectedCategory', newCategory)
+    emit('reloadEvents')
+  }
+)
+
+
 onMounted(() => {
   loadCategories()
 })
@@ -115,68 +100,10 @@ function loadCategories() {
     .catch(err => console.error('Fehler beim Laden der Kategorien:', err))
 }
 
-function onSliderChange() {
-  if (isCategoryFilterOpen.value) {
-    applyFilter() // Wenn der Kategorie-Filter geöffnet ist
-  } else {
-    emit('reloadEvents', localDaysToFilter.value) // Ansonsten lade Events mit dem Slider-Wert
-  }
+
+function resetFilter() {
+  localDaysToFilter.value = 14;
+  localSelectedCategory.value = '';
 }
 
-function toggleCategoryFilter() {
-  isCategoryFilterOpen.value = !isCategoryFilterOpen.value;
-
-  if (!isCategoryFilterOpen.value) {
-    // Kategorie-Filter wurde geschlossen → Alle Events neu laden
-    selectedCategory.value = '';
-    emit('reloadEvents', localDaysToFilter.value);
-  }
-}
-
-// Filter anwenden
-function applyFilter() {
-  if (!selectedCategory.value) {
-    // Keine Kategorie = alle Events
-    emit('updateFilteredEvents', props.allEvents)
-  } else {
-    // Neue Kategorie-Route
-    fetch(`http://localhost:3000/api/eventsByCategory?kat=${selectedCategory.value}&ndays=${localDaysToFilter.value}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && Array.isArray(data.items)) {
-          // Mappen wie in App.vue
-          const mapped = data.items.map((item, index) => ({
-            id: index,
-            title: item.title,
-            description: item.description,
-            begin: item.beginndatum,
-            end: item.endedatum,
-            time: item.uhrzeit,
-            lat: parseFloat(item.latitude),
-            lng: parseFloat(item.longitude),
-            location: item.veranstaltungsort,
-            address: `${item.strasse} ${item.hausnummer}`,
-            district: item.stadtteil,
-            price: item.preis,
-            link: item.link,
-            img: item.teaserbild
-          }))
-
-          // Optional: Filtern nach validen Koordinaten
-          const valid = mapped.filter(ev => !isNaN(ev.lat) && !isNaN(ev.lng))
-
-          // Jetzt emitten wir das gefilterte Array
-          emit('updateFilteredEvents', valid)
-        } else {
-          // Keine Events oder Fehler
-          emit('updateFilteredEvents', [])
-        }
-      })
-      .catch(err => {
-        console.error('Fehler beim Laden der Kategoriendaten:', err)
-        // Ggf. leeres Array weitergeben
-        emit('updateFilteredEvents', [])
-      });
-  }
-}
 </script>
