@@ -44,7 +44,6 @@ const onSearchInput = () => {
   clearTimeout(searchTimeout);
 
   searchTimeout = setTimeout(() => {
-    const query = searchQuery.value.trim();
 
     loadEvents();
 
@@ -52,10 +51,33 @@ const onSearchInput = () => {
   }, 1000); // 1 Sekunde warten
 };
 
+const eventsCache = new Map();
+
+let loadTimeout = null;
+
+function debounceLoadEvents() {
+  // Vorherigen Timeout abbrechen, falls vorhanden
+  if (loadTimeout) {
+    clearTimeout(loadTimeout);
+  }
+  // Neuen Timeout starten, der nach 500ms loadEvents() aufruft
+  loadTimeout = setTimeout(() => {
+    loadEvents();
+    loadTimeout = null; // Zurücksetzen
+  }, 500);
+}
 
 // Events laden (z.B. nächste 14 Tage)
 async function loadEvents() {
   try {
+
+    const cacheKey = `${selectedCategory.value}-${daysToFilter.value}-${searchQuery.value.trim().toLowerCase()}`;
+
+    // Falls Daten bereits im Cache sind, nutze diese:
+    if (eventsCache.has(cacheKey)) {
+      filteredEvents.value = eventsCache.get(cacheKey);
+      return;
+  }
 
     let result;
 
@@ -72,6 +94,7 @@ async function loadEvents() {
       result = filterBySearchQuery(result);
     }
 
+    eventsCache.set(cacheKey, result);
     filteredEvents.value = result;
 
   } catch (error) {
@@ -229,7 +252,7 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
           class="flex-none w-1/4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white p-4 overflow-y-auto shadow-lg">
           <h2 class="text-lg font-bold mb-2">Filter</h2>
           <Filter :allEvents="allEvents" :filterCatMessage="filterCatMessage" v-model:daysToFilter="daysToFilter"
-            v-model:selectedCategory="selectedCategory" @reloadEvents="loadEvents" />
+            v-model:selectedCategory="selectedCategory" @reloadEvents="debounceLoadEvents" />
           <p v-if="filterCatMessage" class="text-red-600 dark:text-red-400">
             {{ filterCatMessage }}
           </p>

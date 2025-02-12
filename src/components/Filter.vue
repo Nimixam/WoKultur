@@ -12,26 +12,31 @@
           class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
       </div>
 
-      <!-- Button: Filter zurücksetzen -->
-      <button class="px-4 py-2 mb-4 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
-        @click="resetFilter">
-        Filter zurücksetzen
-      </button>
-
       <!-- Kategorie-Filter -->
-      <form class="filter-container" id="filter">
-        <label for="kat-filter" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-          Kategorie wählen:
-        </label>
-        <select id="kat-filter"
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-green-500 dark:focus:border-green-500"
-          v-model="localSelectedCategory">
-          <option value="">Alle Kategorien</option>
-          <option v-for="cat in categoryData" :key="cat.id" :value="cat.id">
-            {{ cat.name }}
-          </option>
-        </select>
-      </form>
+      <div class="mb-4">
+        <form class="filter-container" id="filter">
+          <label for="kat-filter" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            Kategorie wählen:
+          </label>
+          <select id="kat-filter"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-green-500 dark:focus:border-green-500"
+            v-model="localSelectedCategory">
+            <option value="">Alle Kategorien</option>
+            <option v-for="cat in categoryData" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </select>
+        </form>
+      </div>
+
+      <!-- Button: Filter zurücksetzen -->
+      <div class="flex justify-center mb-4">
+        <button class="px-2 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 focus:outline-none"
+          @click="resetFilter">
+          Filter zurücksetzen
+        </button>
+      </div>
+
     </div>
   </section>
 </template>
