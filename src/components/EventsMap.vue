@@ -51,6 +51,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat';
 import 'leaflet-extra-markers/dist/js/leaflet.extra-markers.min.js';
 import 'leaflet-routing-machine';
+import 'leaflet.markercluster';
 
 const sightsIcon = L.ExtraMarkers.icon({
   icon: 'fa-star',       // Wähle ein Font Awesome-Symbol (z.B. 'fa-star')
@@ -73,14 +74,20 @@ export default {
     showSights: {
       type: Boolean,
       default: false
+    },
+    showTicketmasterEvents: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
     return {
       map: null,
       markers: new Map(),
+      markersCluster: null,
       heatLayer: null,
       sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
+      ticketmasterEventsLayer: null,
       routingControl: null,       // Für die Routenanzeige
       userLocation: {               // Standardwert – idealerweise per Geolocation ermitteln
         lat: 50.9375,
@@ -215,6 +222,69 @@ export default {
       }
     },
 
+    addTicketmasterMarkers() {
+      // Falls bereits vorhanden, entfernen
+      if (this.markersCluster) {
+        this.map.removeLayer(this.markersCluster);
+      }
+      // Erstelle eine neue Cluster-Gruppe
+      this.markersCluster = L.markerClusterGroup();
+
+      fetch('http://localhost:3000/ticketmaster')
+        .then(response => response.json())
+        .then(data => {
+          // Prüfe, ob Events vorhanden sind
+          if (
+            data &&
+            data._embedded &&
+            data._embedded.events &&
+            Array.isArray(data._embedded.events)
+          ) {
+            console.log(data._embedded)
+            data._embedded.events.forEach(event => {
+              // Wir nehmen den ersten Venue-Eintrag
+              const venue = event._embedded.venues[0];
+              const lat = parseFloat(venue.location.latitude);
+              const lng = parseFloat(venue.location.longitude);
+              // Popup-Inhalt zusammenstellen:
+              const image = (event.images && event.images.length > 0) ? event.images[0].url : '';
+              const name = event.name;
+              const date = event.dates.start.localDate || 'kein Datum verfügbar';
+              const time = event.dates.start.localTime || '';
+              const address = venue.address ? venue.address.line1 : 'keine Adresse verfügbar';
+              const city = venue.city ? venue.city.name : '';
+              const eventUrl = event.url || 'kein Link verfügbar';
+              const popupContent = `
+              <div class="text-left space-y-1">
+                ${image ? `<img src="${image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">` : ''}
+                <h3 class="font-semibold text-base">${name}</h3>
+                <p class="text-sm text-gray-500">${this.formatDate(date)}, ${time ? time.slice(0, 5) + " Uhr" : time}</p>
+                <p class="text-sm text-gray-500"><b>Ort</b>: ${address}, ${city}</p>
+                <p class="text-sm text-blue-600"><b>Link</b>: <a href="${eventUrl}" target="_blank" class="underline">Zu Ticketmaster</a></p>
+                </div>
+                `;
+
+                // Definiere ein rotes Marker-Icon mit ExtraMarkers (verwende z. B. ein Ticket-Icon)
+                const ticketIcon = L.ExtraMarkers.icon({
+                  icon: 'fa-circle', // FontAwesome-Symbol; stelle sicher, dass FontAwesome eingebunden ist
+                  markerColor: 'red',
+                  shape: 'circle',
+                  prefix: 'fa',
+                  iconColor: 'white'
+                });
+                const marker = L.marker([lat, lng], { icon: ticketIcon });
+              marker.bindPopup(popupContent);
+
+              // Füge den Marker zur Cluster-Gruppe hinzu
+              this.markersCluster.addLayer(marker);
+            });
+            this.map.addLayer(this.markersCluster);
+            this.map.invalidateSize();
+          }
+        })
+        .catch(error => console.error('Fehler beim Laden der Ticketmaster-Events:', error));
+    },
+
     addSightsMarkers() {
       // Falls bereits vorhanden, entfernen
       if (this.sightsLayer) {
@@ -260,9 +330,13 @@ export default {
     },
     removeSightsMarkers() {
       if (this.sightsLayer) {
-        this.map.removeLayer(this.sightsLayer);
-        this.sightsLayer = null;
-      }
+      this.sightsLayer.eachLayer((layer) => {
+        layer.off();           // Alle Event-Listener entfernen
+        layer.unbindPopup();   // Popup unbinden
+      });
+      this.map.removeLayer(this.sightsLayer);
+      this.sightsLayer = null;
+  }
     },
 
     showRoute(destinationLat, destinationLng) {
@@ -362,14 +436,23 @@ export default {
           this.addSightsMarkers();
         } else {
           this.removeSightsMarkers();
-          // Entferne die Routing-Control, falls vorhanden
-          if (this.routingControl) {
-            this.map.removeControl(this.routingControl);
-            this.routingControl = null;
-          }
         }
       },
       immediate: true
+    },
+    showTicketmasterEvents: {
+      handler(newVal) {
+        if (newVal) {
+          this.addTicketmasterMarkers();
+        } else if (this.ticketmasterEventsLayer) {
+          this.ticketmasterEventsLayer.eachLayer((layer) => {
+            layer.off();           // Alle Event-Listener entfernen
+            layer.unbindPopup();   // Popup unbinden
+          });
+          this.map.removeLayer(this.ticketmasterEventsLayer);
+          this.ticketmasterEventsLayer = null;
+      }
+      }
     }
   },
   mounted() {

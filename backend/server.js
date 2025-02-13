@@ -63,7 +63,7 @@ app.get('/api/eventsByCategory', async (req, res) => {
 app.get('/api/sehenswuerdigkeiten', async (req, res) => {
   try {
     const url = 'https://geoportal.stadt-koeln.de/arcgis/rest/services/basiskarten/stadtplanthemen/MapServer/7/query?where=objectid%20is%20not%20null&outFields=*&returnGeometry=true&outSR=4326&f=json';
-    
+
     const response = await fetch(url)
     const rawText = await response.text()
     const jsonData = JSON.parse(rawText)
@@ -74,6 +74,25 @@ app.get('/api/sehenswuerdigkeiten', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+app.get('/ticketmaster', async (req, res) => {
+  try {
+    const API_KEY = "GGRZCMjg9FnByATAKtPrAdc2RmYYu8ae";
+    const pageSize = "199";
+    const url = `https://app.ticketmaster.com/discovery/v2/events?city=cologne&size=${pageSize}&apikey=${API_KEY}`;
+    
+    const response = await fetch(url);
+    const rawText = await response.text();
+    const jsonData = JSON.parse(rawText);
+
+    res.json(jsonData);
+  } catch (error) {
+    console.log("Fehler beim Abrufen von Ticketmaster", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 app.listen(3000, () => {
   console.log('Proxy-Server läuft auf Port 3000');
