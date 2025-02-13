@@ -6,16 +6,13 @@
     </div>
 
     <!-- Liste rechts -->
-    <div class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white">
+    <div
+      class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white">
       <h2 class="text-lg font-bold mb-4 text-center">Liste der Veranstaltungen</h2>
       <ul>
-        <li
-          v-for="(event, index) in filteredEvents"
-          :key="event.id"
-          :id="'event-' + event.id"
+        <li v-for="(event, index) in filteredEvents" :key="event.id" :id="'event-' + event.id"
           @click="focusOnEvent(event)"
-          class="mb-2 p-3 bg-white shadow rounded hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer"
-        >
+          class="mb-2 p-3 bg-white shadow rounded hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer">
           <h3 class="font-semibold">{{ event.title }}</h3>
           <p class="text-sm text-gray-700 dark:text-gray-200">
             {{ event.description || 'Keine Beschreibung verfügbar' }}
@@ -28,10 +25,8 @@
           </p>
 
           <!-- Button: mehr/weniger anzeigen -->
-          <button
-            @click.stop="toggleDetails(index)"
-            class="mt-2 px-2 py-1 bg-gray-400 text-white text-sm rounded hover:bg-gray-500 focus:outline-none"
-          >
+          <button @click.stop="toggleDetails(index)"
+            class="mt-2 px-2 py-1 bg-gray-400 text-white text-sm rounded hover:bg-gray-500 focus:outline-none">
             {{ expandedIndices.includes(index) ? 'Weniger anzeigen' : 'Mehr anzeigen' }}
           </button>
 
@@ -54,6 +49,14 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat';
+import 'leaflet-extra-markers/dist/js/leaflet.extra-markers.min.js';
+
+const sightsIcon = L.ExtraMarkers.icon({
+  icon: 'fa-star',       // Wähle ein Font Awesome-Symbol (z.B. 'fa-star')
+  markerColor: 'green',   // Wähle die Farbe (z.B. blue, red, green, etc.)
+  shape: 'star',       // Wähle die Form (z.B. circle, square, star)
+  prefix: 'fa'           // Gibt an, dass Font Awesome verwendet wird
+});
 
 export default {
   name: 'EventsMap',
@@ -65,6 +68,10 @@ export default {
     showHeatmap: {
       type: Boolean,
       default: false
+    },
+    showSights: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -72,6 +79,7 @@ export default {
       map: null,
       markers: new Map(),
       heatLayer: null,
+      sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
       expandedIndices: [] // Array, um zu verfolgen, welche Events erweitert sind
     }
   },
@@ -100,18 +108,17 @@ export default {
 
         const popupContent = `
           <div class="text-left space-y-1">
-            ${
-              imageUrl
-                ? `<img src="${imageUrl}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-                : ''
-            }
+            ${imageUrl
+            ? `<img src="${imageUrl}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+            : ''
+          }
             <h3 class="font-semibold text-base">${event.title}</h3>
             <p class="text-sm text-gray-700">${event.description || 'Keine Beschreibung verfügbar'}</p>
             <p class="text-sm text-gray-500">
               ${this.formatDate(event.begin)} - ${this.formatDate(event.end)}, ${event.time
-                ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, '')
-                : ''
-              }
+            ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, '')
+            : ''
+          }
             </p>
             <p class="text-sm text-gray-500">
               <b>Ort:</b> ${event.location || ''}, ${event.address || ''} ${event.district || ''}
@@ -119,11 +126,10 @@ export default {
             <p class="text-sm text-gray-500">
               <b>Preis:</b> ${event.price?.replace(/<br\s*\/?>/gi, '') || 'Keine Angaben'}
             </p>
-            ${
-              event.link
-                ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
-                : ''
-            }
+            ${event.link
+            ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
+            : ''
+          }
             <button 
               class="flex items-center justify-end text-gray-500 font-bold mt-2 cursor-pointer w-full"
               title="Zur Liste springen"
@@ -139,7 +145,7 @@ export default {
           .bindPopup(popupContent);
 
         marker.addTo(this.map);
-        
+
         // Füge einen Click-Listener hinzu, wenn das Popup geöffnet wird
         marker.on('popupopen', () => {
           const button = document.querySelector(`[data-event-id="${event.id}"]`);
@@ -193,6 +199,38 @@ export default {
       }
     },
 
+    addSightsMarkers() {
+      // Falls bereits vorhanden, entfernen
+      if (this.sightsLayer) {
+        this.map.removeLayer(this.sightsLayer);
+      }
+      // Erstelle eine neue LayerGroup
+      this.sightsLayer = L.layerGroup();
+      // Abrufen der Sehenswürdigkeiten-Daten
+      fetch('http://localhost:3000/api/sehenswuerdigkeiten')
+        .then(response => response.json())
+        .then(data => {
+          data.features.forEach(feature => {
+            const lat = feature.geometry.y;
+            const lng = feature.geometry.x;
+            const name = feature.attributes.name || 'Kein Name';
+            const address = feature.attributes.adresse || 'Keine Adresse';
+            const district = feature.attributes.stadtteil || '';
+            const marker = L.marker([lat, lng], { icon: sightsIcon });
+            marker.bindPopup(`<strong>${name}</strong><br>${address}, ${district}`);
+            marker.addTo(this.sightsLayer);
+          });
+          this.sightsLayer.addTo(this.map);
+        })
+        .catch(error => console.error('Fehler beim Laden der Sehenswürdigkeiten:', error));
+    },
+    removeSightsMarkers() {
+      if (this.sightsLayer) {
+        this.map.removeLayer(this.sightsLayer);
+        this.sightsLayer = null;
+      }
+    },
+
     focusOnEvent(event) {
       const marker = this.markers.get(event.id)
       if (marker) {
@@ -237,6 +275,16 @@ export default {
         }
       },
       immediate: true
+    },
+    showSights: {
+      handler(newVal) {
+        if (newVal) {
+          this.addSightsMarkers();
+        } else {
+          this.removeSightsMarkers();
+        }
+      },
+      immediate: true
     }
   },
   mounted() {
@@ -252,20 +300,24 @@ export default {
   width: 100%;
   height: 65vh;
 }
+
 .map-container {
   width: 66.6667%;
   height: 100%;
 }
+
 .list-container {
   width: 33.3333%;
   height: 100%;
 }
+
 .leaflet-container {
   z-index: 0 !important;
 }
 
 .highlight {
-  background-color: #f0f0f0; /* Helles Grau */
+  background-color: #f0f0f0;
+  /* Helles Grau */
   transition: background-color 0.3s ease;
 }
 </style>

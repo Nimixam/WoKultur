@@ -34,6 +34,7 @@ const filterCatMessage = ref('') // Nachricht für fehlende Events
 const daysToFilter = ref(14) // Standardwert für den Slider
 
 const showHeatmap = ref(false);
+const showSights = ref(false); // Neue Variable für Sehenswürdigkeiten
 
 const searchQuery = ref(''); // Suchbegriff
 const isSearching = ref(false); // Lade-Status
@@ -77,7 +78,7 @@ async function loadEvents() {
     if (eventsCache.has(cacheKey)) {
       filteredEvents.value = eventsCache.get(cacheKey);
       return;
-  }
+    }
 
     let result;
 
@@ -236,13 +237,20 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
           Heatmap anzeigen
         </label>
       </div>
+      <!-- Sehenswürdigkeiten Checkbox -->
+      <div class="flex items-center">
+        <input type="checkbox" id="sights-toggle" v-model="showSights" class="mr-2 cursor-pointer" />
+        <label for="sights-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
+          Sehenswürdigkeiten anzeigen
+        </label>
+      </div>
     </div>
 
     <!-- Map, Liste, Filter -->
     <div class="relative flex transition-all duration-300 mt-4" style="height: 60vh;">
       <div class="flex-none transition-all duration-300" :class="isFilterOpen ? 'w-3/4' : 'w-full'">
         <!-- Übergebe gefilterte Events an die Kartenkomponente -->
-        <EventsMap :filteredEvents="filteredEvents" :showHeatmap="showHeatmap" />
+        <EventsMap :filteredEvents="filteredEvents" :showHeatmap="showHeatmap" :showSights="showSights" />
       </div>
 
       <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-x-full"
