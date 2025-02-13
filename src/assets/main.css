@@ -42,3 +42,9 @@ a,
     @apply flex items-center;
   }
 }
+
+
+.leaflet-routing-container,
+.leaflet-routing-container * {
+  color: black !important;
+}

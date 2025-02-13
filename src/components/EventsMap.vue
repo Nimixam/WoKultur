@@ -50,6 +50,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat';
 import 'leaflet-extra-markers/dist/js/leaflet.extra-markers.min.js';
+import 'leaflet-routing-machine';
 
 const sightsIcon = L.ExtraMarkers.icon({
   icon: 'fa-star',       // Wähle ein Font Awesome-Symbol (z.B. 'fa-star')
@@ -80,6 +81,11 @@ export default {
       markers: new Map(),
       heatLayer: null,
       sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
+      routingControl: null,       // Für die Routenanzeige
+      userLocation: {               // Standardwert – idealerweise per Geolocation ermitteln
+        lat: 50.9375,
+        lng: 6.9603
+      },
       expandedIndices: [] // Array, um zu verfolgen, welche Events erweitert sind
     }
   },
@@ -130,6 +136,7 @@ export default {
             ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
             : ''
           }
+            <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
             <button 
               class="flex items-center justify-end text-gray-500 font-bold mt-2 cursor-pointer w-full"
               title="Zur Liste springen"
@@ -147,10 +154,19 @@ export default {
         marker.addTo(this.map);
 
         // Füge einen Click-Listener hinzu, wenn das Popup geöffnet wird
-        marker.on('popupopen', () => {
+        marker.on('popupopen', (e) => {
           const button = document.querySelector(`[data-event-id="${event.id}"]`);
           if (button) {
             button.addEventListener('click', () => this.scrollToList(event.id));
+          }
+
+          const popupEl = e.popup.getElement();
+          const btn = popupEl.querySelector('.route-link');
+          if (btn) {
+            btn.addEventListener('click', () => {
+              // Rufe die showRoute-Methode auf – hier als Beispiel mit event-Koordinaten:
+              this.showRoute(event.lat, event.lng);
+            });
           }
         });
 
@@ -216,8 +232,26 @@ export default {
             const name = feature.attributes.name || 'Kein Name';
             const address = feature.attributes.adresse || 'Keine Adresse';
             const district = feature.attributes.stadtteil || '';
+            
+            // Erstelle einen eindeutigen Button-ID (hier z.B. basierend auf Name und lat)
+            const popupContent = `
+              <strong>${name}</strong><br>${address}, ${district}<br>
+              <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
+            `;
             const marker = L.marker([lat, lng], { icon: sightsIcon });
-            marker.bindPopup(`<strong>${name}</strong><br>${address}, ${district}`);
+            marker.bindPopup(popupContent);
+
+            // Sobald das Popup geöffnet wird, füge den Click-Listener hinzu:
+            marker.on('popupopen', (e) => {
+              const popupEl = e.popup.getElement();
+              const btn = popupEl.querySelector('.route-link');
+              if (btn) {
+                btn.addEventListener('click', () => {
+                  this.showRoute(lat, lng);
+                });
+              }
+            });
+        
             marker.addTo(this.sightsLayer);
           });
           this.sightsLayer.addTo(this.map);
@@ -229,6 +263,52 @@ export default {
         this.map.removeLayer(this.sightsLayer);
         this.sightsLayer = null;
       }
+    },
+
+    showRoute(destinationLat, destinationLng) {
+      // Falls bereits ein Routing-Control existiert, entferne es:
+      if (this.routingControl) {
+        this.map.removeControl(this.routingControl);
+      }
+      // Erstelle und füge die Routing-Control hinzu:
+      this.routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(this.userLocation.lat, this.userLocation.lng),
+          L.latLng(destinationLat, destinationLng)
+        ],
+        draggableWaypoints: true,
+        addWaypoints: false,
+        routeWhileDragging: true,
+        showAlternatives: false,
+        router: L.Routing.osrmv1({
+          serviceUrl: 'https://router.project-osrm.org/route/v1'
+        }),
+        // Erzeuge eigene Marker (für Start und Ende)
+        createMarker: function(i, wp, nWps) {
+          let icon;
+          if (i === 0) {
+            // Startmarker: Symbol "A"
+            icon = L.divIcon({
+              className: 'custom-route-marker start-marker',
+              html: '<div style="background:yellow;color:black;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-weight:bold;">A</div>',
+              iconSize: [30, 30],
+              iconAnchor: [15, 30]
+            });
+          } else if (i === nWps - 1) {
+            // Endmarker: Symbol "B"
+            icon = L.divIcon({
+              className: 'custom-route-marker end-marker',
+              html: '<div style="background:yellow;color:black;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-weight:bold;">B</div>',
+              iconSize: [30, 30],
+              iconAnchor: [15, 30]
+            });
+          }
+          return L.marker(wp.latLng, { draggable: true, icon: icon });
+        },
+        lineOptions: {
+          styles: [{ color: 'blue', opacity: 0.6, weight: 4 }]
+        }
+      }).addTo(this.map);
     },
 
     focusOnEvent(event) {
@@ -282,6 +362,11 @@ export default {
           this.addSightsMarkers();
         } else {
           this.removeSightsMarkers();
+          // Entferne die Routing-Control, falls vorhanden
+          if (this.routingControl) {
+            this.map.removeControl(this.routingControl);
+            this.routingControl = null;
+          }
         }
       },
       immediate: true
