@@ -7,7 +7,7 @@
         <label for="days-slider" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
           Zeitraum: {{ localDaysToFilter }} Tage
         </label>
-        <input id="days-slider" type="range" min="1" max="30" v-model.number="localDaysToFilter"
+        <input id="days-slider" type="range" min="1" max="90" v-model.number="localDaysToFilter"
           class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
       </div>
 

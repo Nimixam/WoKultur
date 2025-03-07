@@ -77,13 +77,13 @@ function debounceLoadEvents() {
 async function loadEvents() {
   try {
 
-    loadTicketmasterEvents();
 
     const cacheKey = `${selectedCategory.value}-${daysToFilter.value}-${searchQuery.value.trim().toLowerCase()}`;
 
     // Falls Daten bereits im Cache sind, nutze diese:
     if (eventsCache.has(cacheKey)) {
       filteredEvents.value = eventsCache.get(cacheKey);
+      loadTicketmasterEvents();
       return;
     }
 
@@ -104,6 +104,8 @@ async function loadEvents() {
 
     eventsCache.set(cacheKey, result);
     filteredEvents.value = result;
+
+    loadTicketmasterEvents();
 
   } catch (error) {
     filterCatMessage.value = 'Fehler beim Laden der Events'
@@ -145,12 +147,10 @@ async function loadTicketmasterEvents() {
       return eventDate <= maxDate;  // Filtern
     });
 
-    console.log(result);
     const query = searchQuery.value.trim().toLowerCase();
     if (query) {
       result = result.filter(event => event.name.toLowerCase().includes(query));
     }
-    console.log(result);
     filteredTicketmasterEvents.value = result;
 
     console.log(filteredTicketmasterEvents.value);
