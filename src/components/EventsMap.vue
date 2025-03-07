@@ -36,8 +36,7 @@
               Link: <i>{{ event.link || 'Keine Informationen verfügbar' }}</i>
             </p>
             <p class="text-sm text-orange-500 dark:text-orange-400">
-              Preis: {{ event.price ? event.price.replace(/<br\s*\/?>/gi, '') : 'Keine Angaben' }}
-            </p>
+              Preis: {{ event.price ? event.price.replace(/<br\s*\ /, '') : 'Keine Angaben' }} </p>
           </div>
         </li>
       </ul>
@@ -64,6 +63,10 @@ export default {
   name: 'EventsMap',
   props: {
     filteredEvents: {
+      type: Array,
+      default: () => []
+    },
+    filteredTicketmasterEvents: {
       type: Array,
       default: () => []
     },
@@ -245,31 +248,21 @@ export default {
       // Erstelle eine neue Cluster-Gruppe
       this.markersCluster = L.markerClusterGroup();
 
-      fetch('http://localhost:3000/ticketmaster')
-        .then(response => response.json())
-        .then(data => {
-          // Prüfe, ob Events vorhanden sind
-          if (
-            data &&
-            data._embedded &&
-            data._embedded.events &&
-            Array.isArray(data._embedded.events)
-          ) {
-            console.log(data._embedded)
-            data._embedded.events.forEach(event => {
-              // Wir nehmen den ersten Venue-Eintrag
-              const venue = event._embedded.venues[0];
-              const lat = parseFloat(venue.location.latitude);
-              const lng = parseFloat(venue.location.longitude);
-              // Popup-Inhalt zusammenstellen:
-              const image = (event.images && event.images.length > 0) ? event.images[0].url : '';
-              const name = event.name;
-              const date = event.dates.start.localDate || 'kein Datum verfügbar';
-              const time = event.dates.start.localTime || '';
-              const address = venue.address ? venue.address.line1 : 'keine Adresse verfügbar';
-              const city = venue.city ? venue.city.name : '';
-              const eventUrl = event.url || 'kein Link verfügbar';
-              const popupContent = `
+      this.filteredTicketmasterEvents.forEach(event => {
+        // Wir nehmen den ersten Venue-Eintrag
+        const venue = event._embedded.venues[0];
+        const lat = parseFloat(venue.location.latitude);
+        const lng = parseFloat(venue.location.longitude);
+        // Popup-Inhalt zusammenstellen:
+        const image = (event.images && event.images.length > 0) ? event.images[0].url : '';
+        const name = event.name;
+        const date = event.dates.start.localDate || 'kein Datum verfügbar';
+        const time = event.dates.start.localTime || '';
+        const address = venue.address ? venue.address.line1 : 'keine Adresse verfügbar';
+        const city = venue.city ? venue.city.name : '';
+        const eventUrl = event.url || 'kein Link verfügbar';
+
+        const popupContent = `
               <div class="text-left space-y-1">
                 ${image ? `<img src="${image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">` : ''}
                 <h3 class="font-semibold text-base">${name}</h3>
@@ -277,27 +270,24 @@ export default {
                 <p class="text-sm text-gray-500"><b>Ort</b>: ${address}, ${city}</p>
                 <p class="text-sm text-blue-600"><b>Link</b>: <a href="${eventUrl}" target="_blank" class="underline">Zu Ticketmaster</a></p>
                 </div>
-                `;
+            `;
 
-                // Definiere ein rotes Marker-Icon mit ExtraMarkers (verwende z. B. ein Ticket-Icon)
-                const ticketIcon = L.ExtraMarkers.icon({
-                  icon: 'fa-circle', // FontAwesome-Symbol; stelle sicher, dass FontAwesome eingebunden ist
-                  markerColor: 'red',
-                  shape: 'circle',
-                  prefix: 'fa',
-                  iconColor: 'white'
-                });
-                const marker = L.marker([lat, lng], { icon: ticketIcon });
-              marker.bindPopup(popupContent);
+        // Definiere ein rotes Marker-Icon mit ExtraMarkers (verwende z. B. ein Ticket-Icon)
+        const ticketIcon = L.ExtraMarkers.icon({
+          icon: 'fa-circle', // FontAwesome-Symbol; stelle sicher, dass FontAwesome eingebunden ist
+          markerColor: 'red',
+          shape: 'circle',
+          prefix: 'fa',
+          iconColor: 'white'
+        });
+        const marker = L.marker([lat, lng], { icon: ticketIcon });
+        marker.bindPopup(popupContent);
 
-              // Füge den Marker zur Cluster-Gruppe hinzu
-              this.markersCluster.addLayer(marker);
-            });
-            this.map.addLayer(this.markersCluster);
-            this.map.invalidateSize();
-          }
-        })
-        .catch(error => console.error('Fehler beim Laden der Ticketmaster-Events:', error));
+        // Füge den Marker zur Cluster-Gruppe hinzu
+        this.markersCluster.addLayer(marker);
+      });
+      this.map.addLayer(this.markersCluster);
+      this.map.invalidateSize();
     },
 
     addSightsMarkers() {
@@ -317,7 +307,7 @@ export default {
             const name = feature.attributes.name || 'Kein Name';
             const address = feature.attributes.adresse || 'Keine Adresse';
             const district = feature.attributes.stadtteil || '';
-            
+
             // Erstelle einen eindeutigen Button-ID (hier z.B. basierend auf Name und lat)
             const popupContent = `
               <strong>${name}</strong><br>${address}, ${district}<br>
@@ -336,7 +326,7 @@ export default {
                 });
               }
             });
-        
+
             marker.addTo(this.sightsLayer);
           });
           this.sightsLayer.addTo(this.map);
@@ -345,13 +335,13 @@ export default {
     },
     removeSightsMarkers() {
       if (this.sightsLayer) {
-      this.sightsLayer.eachLayer((layer) => {
-        layer.off();           // Alle Event-Listener entfernen
-        layer.unbindPopup();   // Popup unbinden
-      });
-      this.map.removeLayer(this.sightsLayer);
-      this.sightsLayer = null;
-  }
+        this.sightsLayer.eachLayer((layer) => {
+          layer.off();           // Alle Event-Listener entfernen
+          layer.unbindPopup();   // Popup unbinden
+        });
+        this.map.removeLayer(this.sightsLayer);
+        this.sightsLayer = null;
+      }
     },
 
     showRoute(destinationLat, destinationLng) {
@@ -373,7 +363,7 @@ export default {
           serviceUrl: 'https://router.project-osrm.org/route/v1'
         }),
         // Erzeuge eigene Marker (für Start und Ende)
-        createMarker: function(i, wp, nWps) {
+        createMarker: function (i, wp, nWps) {
           let icon;
           if (i === 0) {
             // Startmarker: Symbol "A"
@@ -429,11 +419,24 @@ export default {
   watch: {
     filteredEvents: {
       handler() {
-        if (this.map) {
-          this.addMarkersToMap()
+        if (this.showCologneEvents) {
+          if (this.map) {
+            this.addMarkersToMap()
+          }
         }
         if (this.showHeatmap) {
-          this.removeHeatmap(); this.addHeatmap();
+          this.removeHeatmap();
+          this.addHeatmap();
+        }
+      },
+      immediate: true
+    },
+    filteredTicketmasterEvents: {
+      handler() {
+        if (this.showTicketmasterEvents) {
+          if (this.map) {
+            this.addTicketmasterMarkers()
+          }
         }
       },
       immediate: true
@@ -458,24 +461,26 @@ export default {
       },
       immediate: true
     },
-    showTicketmasterEvents: {
-      handler(newVal) {
-        if (newVal) {
-          this.addTicketmasterMarkers();
-        } else if (this.markersCluster) {
-          this.map.removeLayer(this.markersCluster);
-          this.markersCluster = null;
-      }
-      }
-    },
     showCologneEvents: {
       handler(newVal) {
-        if (newVal) {
+        if (newVal == true) {
           this.addMarkersToMap();
-        } else if (this.cologneEventsLayer) {
+        }
+        else if (newVal == false && this.cologneEventsLayer) {
           this.map.removeLayer(this.cologneEventsLayer);
           this.cologneEventsLayer = null;
+        }
       }
+    },
+    showTicketmasterEvents: {
+      handler(newVal) {
+        if (newVal == true) {
+          this.addTicketmasterMarkers();
+        }
+        else if (newVal == false && this.markersCluster) {
+          this.map.removeLayer(this.markersCluster);
+          this.markersCluster = null;
+        }
       }
     }
   },

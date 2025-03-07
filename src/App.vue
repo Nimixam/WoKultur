@@ -22,6 +22,8 @@ const allEvents = ref([])
 // Verwende das Composable für die zentrale Filterlogik
 const filteredEvents = ref([])
 
+const filteredTicketmasterEvents = ref([])
+
 const selectedCategory = ref(''); // Aktuell ausgewählte Kategorie
 
 // Filter-Sidebar
@@ -55,6 +57,7 @@ const onSearchInput = () => {
 };
 
 const eventsCache = new Map();
+let ticketmasterCache = new Array();
 
 let loadTimeout = null;
 
@@ -73,6 +76,8 @@ function debounceLoadEvents() {
 // Events laden (z.B. nächste 14 Tage)
 async function loadEvents() {
   try {
+
+    loadTicketmasterEvents();
 
     const cacheKey = `${selectedCategory.value}-${daysToFilter.value}-${searchQuery.value.trim().toLowerCase()}`;
 
@@ -103,6 +108,55 @@ async function loadEvents() {
   } catch (error) {
     filterCatMessage.value = 'Fehler beim Laden der Events'
     console.error('Fehler beim Laden der Events:', error)
+  }
+}
+
+async function loadTicketmasterEvents() {
+  try {
+    if (ticketmasterCache.length === 0) {
+      const response = await fetch('http://localhost:3000/ticketmaster');
+      const data = await response.json();
+
+    // Prüfe, ob Events vorhanden sind
+    if (
+      data &&
+      data._embedded &&
+      data._embedded.events &&
+      Array.isArray(data._embedded.events)
+    ) {
+      ticketmasterCache = data._embedded.events;
+    }
+    else {
+      console.error('Keine Ticketmaster Events gefunden');
+    }
+  }
+
+    let result = ticketmasterCache;
+    console.log(result);
+
+    // Aktuelles Datum und maxDate berechnen
+    const today = new Date();
+    const maxDate = new Date();
+    maxDate.setDate(today.getDate() + daysToFilter.value);  // Stichtag berechnen
+
+    // Filtern der Events
+    result = result.filter(event => {
+      const eventDate = new Date(event?.dates?.start?.localDate) || maxDate; // Event-Datum umwandeln
+      return eventDate <= maxDate;  // Filtern
+    });
+
+    console.log(result);
+    const query = searchQuery.value.trim().toLowerCase();
+    if (query) {
+      result = result.filter(event => event.name.toLowerCase().includes(query));
+    }
+    console.log(result);
+    filteredTicketmasterEvents.value = result;
+
+    console.log(filteredTicketmasterEvents.value);
+
+  } catch (error) {
+    console.error('Fehler beim Laden der Ticketmaster-Events:', error);
   }
 }
 
@@ -197,7 +251,7 @@ loadEvents()
 // Überwache die Events-Arrays
 watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
   if (newAllEvents.length === 0 || newFilteredEvents.length === 0) {
-    filterCatMessage.value = 'Es gibt keine Events mit dem Filter'
+    filterCatMessage.value = 'Es gibt keine Stadt Köln Events mit dem Filter'
   } else {
     filterCatMessage.value = '' // Nachricht zurücksetzen, wenn es Events gibt
   }
@@ -229,7 +283,7 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
       <!-- Checkboxes -->
       <div class="flex items-center gap-2">
         <!-- Stadt Köln Events Checkbox -->
-        <input type="checkbox" id="stadtkoeln-toggle" v-model="showCologneEvents" class="mr-1 cursor-pointer"/>
+        <input type="checkbox" id="stadtkoeln-toggle" v-model="showCologneEvents" class="mr-1 cursor-pointer" />
         <label for="stadtkoeln-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
           Events (Stadt Köln)
         </label>
@@ -260,8 +314,9 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
     <div class="relative flex transition-all duration-300 mt-4" style="height: 60vh;">
       <div class="flex-none transition-all duration-300" :class="isFilterOpen ? 'w-3/4' : 'w-full'">
         <!-- Übergebe gefilterte Events an die Kartenkomponente -->
-        <EventsMap :filteredEvents="filteredEvents" :showHeatmap="showHeatmap" :showSights="showSights"
-          :showTicketmasterEvents="showTicketmasterEvents" :showCologneEvents="showCologneEvents"/>
+        <EventsMap :filteredEvents="filteredEvents" :filteredTicketmasterEvents="filteredTicketmasterEvents"
+          :showHeatmap="showHeatmap" :showSights="showSights" :showTicketmasterEvents="showTicketmasterEvents"
+          :showCologneEvents="showCologneEvents" />
       </div>
 
       <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-x-full"
