@@ -8,7 +8,7 @@
     <!-- Liste rechts -->
     <div
       class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white">
-      <h2 class="text-lg font-bold mb-4 text-center">Liste der Veranstaltungen</h2>
+      <h2 class="text-lg font-bold mb-4 text-center">Liste der Events (Stadt Köln)</h2>
       <ul>
         <li v-for="(event, index) in filteredEvents" :key="event.id" :id="'event-' + event.id"
           @click="focusOnEvent(event)"
@@ -91,7 +91,6 @@ export default {
       markersCluster: null,
       heatLayer: null,
       sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
-      ticketmasterEventsLayer: null,
       cologneEventsLayer: null,
       routingControl: null,       // Für die Routenanzeige
       userLocation: {               // Standardwert – idealerweise per Geolocation ermitteln
@@ -463,13 +462,9 @@ export default {
       handler(newVal) {
         if (newVal) {
           this.addTicketmasterMarkers();
-        } else if (this.ticketmasterEventsLayer) {
-          this.ticketmasterEventsLayer.eachLayer((layer) => {
-            layer.off();           // Alle Event-Listener entfernen
-            layer.unbindPopup();   // Popup unbinden
-          });
-          this.map.removeLayer(this.ticketmasterEventsLayer);
-          this.ticketmasterEventsLayer = null;
+        } else if (this.markersCluster) {
+          this.map.removeLayer(this.markersCluster);
+          this.markersCluster = null;
       }
       }
     },
@@ -478,10 +473,6 @@ export default {
         if (newVal) {
           this.addMarkersToMap();
         } else if (this.cologneEventsLayer) {
-          this.cologneEventsLayer.eachLayer((layer) => {
-            layer.off();           // Alle Event-Listener entfernen
-            layer.unbindPopup();   // Popup unbinden
-          });
           this.map.removeLayer(this.cologneEventsLayer);
           this.cologneEventsLayer = null;
       }

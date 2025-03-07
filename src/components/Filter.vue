@@ -1,7 +1,6 @@
 <template>
   <section>
     <div class="w-full px-4">
-      <h1 class="text-2xl font-bold mb-4">Zeitraum</h1>
 
       <!-- Zeitraum-Slider -->
       <div class="mb-4">
