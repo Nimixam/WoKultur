@@ -36,7 +36,7 @@
               Link: <i>{{ event.link || 'Keine Informationen verfügbar' }}</i>
             </p>
             <p class="text-sm text-orange-500 dark:text-orange-400">
-              Preis: {{ event.price.replace(/<br\s*\/?>/gi, '') || 'Keine Angaben' }}
+              Preis: {{ event.price ? event.price.replace(/<br\s*\/?>/gi, '') : 'Keine Angaben' }}
             </p>
           </div>
         </li>
@@ -78,6 +78,10 @@ export default {
     showTicketmasterEvents: {
       type: Boolean,
       default: false
+    },
+    showCologneEvents: {
+      type: Boolean,
+      default: true
     }
   },
   data() {
@@ -88,6 +92,7 @@ export default {
       heatLayer: null,
       sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
       ticketmasterEventsLayer: null,
+      cologneEventsLayer: null,
       routingControl: null,       // Für die Routenanzeige
       userLocation: {               // Standardwert – idealerweise per Geolocation ermitteln
         lat: 50.9375,
@@ -111,9 +116,16 @@ export default {
     },
 
     addMarkersToMap() {
-      // Vorherige Marker entfernen
-      this.markers.forEach(marker => this.map.removeLayer(marker));
-      this.markers.clear();
+
+      if (this.cologneEventsLayer) {
+        this.map.removeLayer(this.cologneEventsLayer);
+      }
+      // Erstelle eine neue LayerGroup
+      this.cologneEventsLayer = L.layerGroup();
+
+      // // Vorherige Marker entfernen
+      // this.markers.forEach(marker => this.map.removeLayer(marker));
+      // this.markers.clear();
 
       // Neue Marker hinzufügen
       this.filteredEvents.forEach(event => {
@@ -158,7 +170,7 @@ export default {
         const marker = L.marker([event.lat, event.lng])
           .bindPopup(popupContent);
 
-        marker.addTo(this.map);
+        // marker.addTo(this.map);
 
         // Füge einen Click-Listener hinzu, wenn das Popup geöffnet wird
         marker.on('popupopen', (e) => {
@@ -177,8 +189,12 @@ export default {
           }
         });
 
+        marker.addTo(this.cologneEventsLayer);
+
         this.markers.set(event.id, marker);
       });
+
+      this.cologneEventsLayer.addTo(this.map);
 
       // Aktualisiere die Kartendarstellung
       this.map.invalidateSize();
@@ -451,6 +467,20 @@ export default {
           });
           this.map.removeLayer(this.ticketmasterEventsLayer);
           this.ticketmasterEventsLayer = null;
+      }
+      }
+    },
+    showCologneEvents: {
+      handler(newVal) {
+        if (newVal) {
+          this.addMarkersToMap();
+        } else if (this.cologneEventsLayer) {
+          this.cologneEventsLayer.eachLayer((layer) => {
+            layer.off();           // Alle Event-Listener entfernen
+            layer.unbindPopup();   // Popup unbinden
+          });
+          this.map.removeLayer(this.cologneEventsLayer);
+          this.cologneEventsLayer = null;
       }
       }
     }

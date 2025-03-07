@@ -36,6 +36,7 @@ const daysToFilter = ref(14) // Standardwert für den Slider
 const showHeatmap = ref(false);
 const showSights = ref(false); // Neue Variable für Sehenswürdigkeiten
 const showTicketmasterEvents = ref(false); // Neue Variable für Sehenswürdigkeiten
+const showCologneEvents = ref(true);
 
 const searchQuery = ref(''); // Suchbegriff
 const isSearching = ref(false); // Lade-Status
@@ -208,9 +209,10 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
     <Navbar :darkMode="darkMode" @toggleDarkMode="toggleDarkMode" />
     <Hero />
 
-    <!-- Suchleiste -->
-    <div class="flex justify-center items-center mt-4">
-      <div class="relative w-1/2">
+    <!-- Suchleiste, Checkboxes & Filter-Button in einer Zeile -->
+    <div class="flex items-center justify-between mt-4 px-4 space-x-4">
+      <!-- Suchleiste -->
+      <div class="relative flex-1 min-w-[200px]">
         <input type="text" v-model="searchQuery" @input="onSearchInput" placeholder="Events durchsuchen"
           class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
         <div v-if="isSearching" class="absolute right-2 top-2">
@@ -221,44 +223,45 @@ watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
           </svg>
         </div>
       </div>
-    </div>
 
-    <!-- Filter Button & Heatmap Checkbox -->
-    <div class="flex flex-col items-end mt-4 mr-4 space-y-2">
+
+      <!-- Filter Button & Heatmap Checkbox -->
+      <!-- Checkboxes -->
+      <div class="flex items-center gap-2">
+        <!-- Stadt Köln Events Checkbox -->
+        <input type="checkbox" id="stadtkoeln-toggle" v-model="showCologneEvents" class="mr-1 cursor-pointer"/>
+        <label for="stadtkoeln-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
+          Events (Stadt Köln)
+        </label>
+        <!-- Ticketmaster Checkbox -->
+        <input type="checkbox" id="ticketmaster-toggle" v-model="showTicketmasterEvents" class="mr-1 cursor-pointer" />
+        <label for="ticketmaster-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
+          Großevents (Ticketmaster)
+        </label>
+        <!-- Sehenswürdigkeiten Checkbox -->
+        <input type="checkbox" id="sights-toggle" v-model="showSights" class="mr-1 cursor-pointer" />
+        <label for="sights-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
+          Sehenswürdigkeiten
+        </label>
+        <input type="checkbox" id="heatmap-toggle" v-model="showHeatmap" class="mr-1 cursor-pointer" />
+        <label for="heatmap-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
+          Heatmap
+        </label>
+      </div>
+
       <!-- Filter-Button -->
       <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
         @click="toggleFilter">
         {{ isFilterOpen ? 'Filter ausblenden' : 'Filter einblenden' }}
       </button>
-
-      <!-- Heatmap-Checkbox -->
-      <div class="flex items-center">
-        <input type="checkbox" id="heatmap-toggle" v-model="showHeatmap" class="mr-2 cursor-pointer" />
-        <label for="heatmap-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
-          Heatmap anzeigen
-        </label>
-      </div>
-      <!-- Sehenswürdigkeiten Checkbox -->
-      <div class="flex items-center">
-        <input type="checkbox" id="sights-toggle" v-model="showSights" class="mr-2 cursor-pointer" />
-        <label for="sights-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
-          Sehenswürdigkeiten anzeigen
-        </label>
-      </div>
-      <!-- Ticketmaster Checkbox -->
-      <div class="flex items-center">
-        <input type="checkbox" id="ticketmaster-toggle" v-model="showTicketmasterEvents" class="mr-2 cursor-pointer" />
-        <label for="ticketmaster-toggle" class="text-sm font-medium text-gray-900 dark:text-white">
-          TIcketmaster Events anzeigen
-        </label>
-      </div>
     </div>
 
     <!-- Map, Liste, Filter -->
     <div class="relative flex transition-all duration-300 mt-4" style="height: 60vh;">
       <div class="flex-none transition-all duration-300" :class="isFilterOpen ? 'w-3/4' : 'w-full'">
         <!-- Übergebe gefilterte Events an die Kartenkomponente -->
-        <EventsMap :filteredEvents="filteredEvents" :showHeatmap="showHeatmap" :showSights="showSights" :showTicketmasterEvents="showTicketmasterEvents"/>
+        <EventsMap :filteredEvents="filteredEvents" :showHeatmap="showHeatmap" :showSights="showSights"
+          :showTicketmasterEvents="showTicketmasterEvents" :showCologneEvents="showCologneEvents"/>
       </div>
 
       <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-x-full"
