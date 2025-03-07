@@ -433,6 +433,9 @@ export default {
         if (this.map) {
           this.addMarkersToMap()
         }
+        if (this.showHeatmap) {
+          this.removeHeatmap(); this.addHeatmap();
+        }
       },
       immediate: true
     },
