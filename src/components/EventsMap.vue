@@ -1,21 +1,128 @@
 <template>
-  <section
-    id="map-section"
-    class="w-full h-[600px] flex bg-green-600 text-white dark:bg-gray-700"
-  >
-    <!-- Map container -->
-    <div class="map-container w-2/3 h-full">
-      <div id="map" class="h-full w-full"></div>
+  <!-- Haupt-Container (flex row) -->
+  <section class="flex flex-row w-full h-[600px]">
+    <!-- Seitliches Panel (nur sichtbar, wenn "selectedEvent" != null) -->
+    <transition name="slide-fade">
+      <div
+        v-if="selectedEvent"
+        class="bg-white dark:bg-gray-700 text-black dark:text-white p-4 overflow-y-auto"
+        :class="[
+          // Beispiel: 1/4 der Breite, kannst du ändern
+          'w-1/4',
+          'h-full',
+        ]"
+      >
+        <!-- Schließen-Button -->
+        <div class="flex justify-end mb-2">
+          <!-- Button zum Schließen (Beispiel in deinem Side-Panel) -->
+          <button
+            @click="closeSidePanel"
+            class="inline-flex items-center justify-center w-10 h-10 rounded text-gray-600 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+          >
+            <!-- X-Icon (Heroicon / eigenes SVG) -->
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Bild -->
+        <div v-if="selectedEvent.img" class="mb-2">
+          <img
+            :src="selectedEvent.img"
+            alt="Teaserbild"
+            class="w-full h-auto rounded object-cover"
+          />
+        </div>
+
+        <!-- Titel -->
+        <h3 class="text-xl font-semibold mb-2">
+          {{ selectedEvent.title }}
+        </h3>
+
+        <!-- Beschreibung -->
+        <p class="mb-2">
+          {{ selectedEvent.description || "Keine Beschreibung verfügbar" }}
+        </p>
+
+        <!-- Zeitraum -->
+        <p class="mb-1 text-sm text-gray-700 dark:text-gray-300">
+          <strong>Zeitraum:</strong>
+          {{ formatDate(selectedEvent.begin) }} -
+          {{ formatDate(selectedEvent.end) }}
+          <span v-if="selectedEvent.time">
+            , {{ selectedEvent.time.replace(/<br\s*\/?>/gi, "") }}
+          </span>
+        </p>
+
+        <!-- Ort -->
+        <p class="mb-1 text-sm text-gray-700 dark:text-gray-300">
+          <strong>Ort:</strong>
+          {{ selectedEvent.location }}, {{ selectedEvent.address }}
+          {{ selectedEvent.district }}
+        </p>
+
+        <!-- Preis -->
+        <p class="mb-1 text-sm text-gray-700 dark:text-gray-300">
+          <strong>Preis:</strong>
+          {{ selectedEvent.price }}
+        </p>
+
+        <!-- Link -->
+        <p
+          v-if="selectedEvent.link"
+          class="mb-4 text-sm text-blue-600 dark:text-blue-400"
+        >
+          <strong>Link:</strong>
+          <a :href="selectedEvent.link" target="_blank" class="underline">
+            Mehr erfahren
+          </a>
+        </p>
+
+        <!-- Route anzeigen -->
+        <button
+          @click="showRoute(selectedEvent.lat, selectedEvent.lng)"
+          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Route anzeigen
+        </button>
+      </div>
+    </transition>
+
+    <!-- Container für die Karte -->
+    <div
+      :class="[
+        'h-full',
+        selectedEvent ? 'w-1/2' : 'w-2/3',
+        'rounded-xl',
+        'overflow-hidden',
+      ]"
+    >
+      <div id="map" class="w-full h-full"></div>
     </div>
 
-    <!-- Events list -->
+    <!-- Event-Liste rechts -->
     <div
-      class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white"
+      :class="[
+        'bg-gray-100  rounded-lg dark:bg-gray-800 text-black dark:text-white overflow-y-auto',
+        selectedEvent ? 'w-1/4' : 'w-1/3',
+      ]"
     >
-      <h2 class="text-lg font-bold mb-4 text-center">
+      <h2 class="text-lg font-bold mb-4 text-center p-2">
         Liste der Events (Stadt Köln)
       </h2>
-      <ul>
+      <ul class="px-4">
         <li
           v-for="(event, index) in filteredEvents"
           :key="event.id"
@@ -32,7 +139,8 @@
             {{ event.time || "" }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Ort: {{ event.location || "" }}, {{ event.address || "" }}
+            Ort: {{ event.location || "" }},
+            {{ event.address || "" }}
             {{ event.district || "" }}
           </p>
 
@@ -48,10 +156,11 @@
             }}
           </button>
 
-          <!-- Zusätzliche Informationen (Link & Preis) -->
+          <!-- Zusätzliche Infos -->
           <div v-if="expandedIndices.includes(index)" class="mt-2">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Link: <i>{{ event.link || "Keine Informationen verfügbar" }}</i>
+              Link:
+              <i>{{ event.link || "Keine Informationen verfügbar" }}</i>
             </p>
             <p class="text-sm text-orange-500 dark:text-orange-400">
               Preis:
@@ -111,6 +220,8 @@ export default {
         lng: 6.9603,
       },
       expandedIndices: [],
+      // aktuell ausgewähltes Event für das Side-Panel
+      selectedEvent: null,
     };
   },
   methods: {
@@ -182,6 +293,8 @@ export default {
             : "Keine Angaben",
           link: event.link || "",
           img: event.img ? `https://www.stadt-koeln.de${event.img}` : null,
+          lat: event.lat,
+          lng: event.lng,
         },
       }));
 
@@ -205,57 +318,11 @@ export default {
         },
       });
 
+      // Bei Klick auf den Marker: selectedEvent füllen -> Panel anzeigen
       this.map.on("click", "cologne-events-layer", (e) => {
         const feature = e.features[0];
         const coordinates = feature.geometry.coordinates.slice();
-        const properties = feature.properties;
-
-        const imageUrl = properties.img;
-        const popupContent = `
-          <div class="text-left space-y-1">
-            ${
-              imageUrl
-                ? `<img src="${imageUrl}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-                : ""
-            }
-            <h3 class="font-semibold text-base">${properties.title}</h3>
-            <p class="text-sm text-gray-700">${properties.description}</p>
-            <p class="text-sm text-gray-500">
-              ${this.formatDate(properties.begin)} - ${this.formatDate(
-          properties.end
-        )}, ${
-          properties.time
-            ? properties.time.replace(
-                /<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi,
-                ""
-              )
-            : ""
-        }
-            </p>
-            <p class="text-sm text-gray-500">
-              <b>Ort:</b> ${properties.location}, ${properties.address} ${
-          properties.district
-        }
-            </p>
-            <p class="text-sm text-gray-500">
-              <b>Preis:</b> ${properties.price}
-            </p>
-            ${
-              properties.link
-                ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${properties.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
-                : ""
-            }
-            <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
-            <button 
-              class="flex items-center justify-end text-gray-500 font-bold mt-2 cursor-pointer w-full"
-              title="Zur Liste springen"
-              id="jump-to-list-${properties.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        `;
+        const props = feature.properties;
 
         this.map.flyTo({
           center: coordinates,
@@ -264,32 +331,21 @@ export default {
         });
 
         setTimeout(() => {
-          const popup = new maplibregl.Popup({
-            offset: [0, -15],
-            maxWidth: "300px",
-          })
-            .setLngLat(coordinates)
-            .setHTML(popupContent)
-            .addTo(this.map);
-
-          popup.on("open", () => {
-            setTimeout(() => {
-              const jumpBtn = document.getElementById(
-                `jump-to-list-${properties.id}`
-              );
-              if (jumpBtn) {
-                jumpBtn.addEventListener("click", () =>
-                  this.scrollToList(properties.id)
-                );
-              }
-              const routeBtn = popup.getElement().querySelector(".route-link");
-              if (routeBtn) {
-                routeBtn.addEventListener("click", () => {
-                  this.showRoute(coordinates[1], coordinates[0]);
-                });
-              }
-            }, 100);
-          });
+          this.selectedEvent = {
+            title: props.title,
+            description: props.description,
+            begin: props.begin,
+            end: props.end,
+            time: props.time,
+            location: props.location,
+            address: props.address,
+            district: props.district,
+            price: props.price,
+            link: props.link,
+            img: props.img,
+            lat: props.lat,
+            lng: props.lng,
+          };
         }, 350);
       });
 
@@ -367,6 +423,7 @@ export default {
     },
 
     addTicketmasterMarkers() {
+      // Unverändert, falls du Ticketmaster weiter verwenden willst
       if (this.map.getSource("ticketmaster-events")) {
         this.map.removeLayer("ticketmaster-clusters");
         this.map.removeLayer("ticketmaster-cluster-count");
@@ -465,33 +522,34 @@ export default {
         const properties = e.features[0].properties;
         const coordinates = e.features[0].geometry.coordinates.slice();
 
-        const popupContent = `
-          <div class="text-left space-y-1">
-            ${
-              properties.image
-                ? `<img src="${properties.image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-                : ""
-            }
-            <h3 class="font-semibold text-base">${properties.name}</h3>
-            <p class="text-sm text-gray-500">${this.formatDate(
-              properties.date
-            )}, ${
-          properties.time
-            ? properties.time.slice(0, 5) + " Uhr"
-            : properties.time
-        }</p>
-            <p class="text-sm text-gray-500"><b>Ort</b>: ${
-              properties.address
-            }, ${properties.city}</p>
-            <p class="text-sm text-blue-600"><b>Link</b>: <a href="${
-              properties.eventUrl
-            }" target="_blank" class="underline">Zu Ticketmaster</a></p>
-          </div>
-        `;
-
         new maplibregl.Popup()
           .setLngLat(coordinates)
-          .setHTML(popupContent)
+          .setHTML(
+            `<div class="text-left space-y-1">
+               ${
+                 properties.image
+                   ? `<img src="${properties.image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+                   : ""
+               }
+               <h3 class="font-semibold text-base">${properties.name}</h3>
+               <p class="text-sm text-gray-500">
+                 ${this.formatDate(properties.date)},
+                 ${
+                   properties.time
+                     ? properties.time.slice(0, 5) + " Uhr"
+                     : properties.time
+                 }
+               </p>
+               <p class="text-sm text-gray-500"><b>Ort</b>: ${
+                 properties.address
+               }, ${properties.city}</p>
+               <p class="text-sm text-blue-600">
+                 <b>Link</b>: <a href="${
+                   properties.eventUrl
+                 }" target="_blank" class="underline">Zu Ticketmaster</a>
+               </p>
+             </div>`
+          )
           .addTo(this.map);
       });
 
@@ -573,33 +631,29 @@ export default {
             const coordinates = feature.geometry.coordinates.slice();
             const properties = feature.properties;
 
-            const popupContent = `
-              <strong>${properties.name}</strong><br>${properties.address}, ${properties.district}<br>
-              <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
-            `;
-
-            setTimeout(() => {
-              const popup = new maplibregl.Popup({
-                offset: [0, -15],
-                maxWidth: "350px",
-              })
-                .setLngLat(coordinates)
-                .setHTML(popupContent)
-                .addTo(this.map);
-
-              popup.on("open", () => {
+            new maplibregl.Popup({
+              offset: [0, -15],
+              maxWidth: "350px",
+            })
+              .setLngLat(coordinates)
+              .setHTML(
+                `
+                <strong>${properties.name}</strong><br>
+                ${properties.address}, ${properties.district}<br>
+                <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
+              `
+              )
+              .addTo(this.map)
+              .on("open", () => {
                 setTimeout(() => {
-                  const routeBtn = popup
-                    .getElement()
-                    .querySelector(".route-link");
+                  const routeBtn = document.querySelector(".route-link");
                   if (routeBtn) {
                     routeBtn.addEventListener("click", () => {
                       this.showRoute(coordinates[1], coordinates[0]);
                     });
                   }
-                }, 100);
+                }, 50);
               });
-            }, 350);
           });
 
           this.map.on("mouseenter", "sights-layer", () => {
@@ -688,6 +742,7 @@ export default {
         .catch((error) => console.error("Error fetching route:", error));
     },
 
+    // beim Klick auf ein Event in der Liste:
     focusOnEvent(event) {
       if (!this.map) return;
 
@@ -697,62 +752,25 @@ export default {
         duration: 300,
       });
 
-      const popupContent = `
-        <div class="text-left space-y-1">
-          ${
-            event.img
-              ? `<img src="https://www.stadt-koeln.de${event.img}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-              : ""
-          }
-          <h3 class="font-semibold text-base">${event.title}</h3>
-          <p class="text-sm text-gray-700">${
-            event.description || "Keine Beschreibung verfügbar"
-          }</p>
-          <p class="text-sm text-gray-500">
-            ${this.formatDate(event.begin)} - ${this.formatDate(event.end)}, ${
-        event.time
-          ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, "")
-          : ""
-      }
-          </p>
-          <p class="text-sm text-gray-500">
-            <b>Ort:</b> ${event.location || ""}, ${event.address || ""} ${
-        event.district || ""
-      }
-          </p>
-          <p class="text-sm text-gray-500">
-            <b>Preis:</b> ${
-              event.price?.replace(/<br\s*\/?>/gi, "") || "Keine Angaben"
-            }
-          </p>
-          ${
-            event.link
-              ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
-              : ""
-          }
-          <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
-        </div>
-      `;
-
+      // Fülle unser Panel
       setTimeout(() => {
-        const popup = new maplibregl.Popup({
-          offset: [0, -15],
-          maxWidth: "300px",
-        })
-          .setLngLat([event.lng, event.lat])
-          .setHTML(popupContent)
-          .addTo(this.map);
-
-        popup.on("open", () => {
-          setTimeout(() => {
-            const routeBtn = popup.getElement().querySelector(".route-link");
-            if (routeBtn) {
-              routeBtn.addEventListener("click", () => {
-                this.showRoute(event.lat, event.lng);
-              });
-            }
-          }, 100);
-        });
+        this.selectedEvent = {
+          title: event.title,
+          description: event.description || "Keine Beschreibung verfügbar",
+          begin: event.begin,
+          end: event.end,
+          time: event.time,
+          location: event.location,
+          address: event.address,
+          district: event.district,
+          price: event.price
+            ? event.price.replace(/<br\s*\/?>/gi, "")
+            : "Keine Angaben",
+          link: event.link,
+          img: event.img ? `https://www.stadt-koeln.de${event.img}` : null,
+          lat: event.lat,
+          lng: event.lng,
+        };
       }, 350);
     },
 
@@ -774,6 +792,11 @@ export default {
       } else {
         this.expandedIndices.push(index);
       }
+    },
+
+    // Panel schließen
+    closeSidePanel() {
+      this.selectedEvent = null;
     },
   },
   watch: {
@@ -848,21 +871,20 @@ export default {
 </script>
 
 <style scoped>
-#map-section {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 65vh;
+/* Animiertes Ein-/Ausblenden des Panels (optional) */
+.slide-fade-enter-active {
+  transition: all 0.3s ease;
 }
-
-.map-container {
-  width: 66.6667%;
-  height: 100%;
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
 }
-
-.list-container {
-  width: 33.3333%;
-  height: 100%;
+.slide-fade-enter {
+  transform: translateX(-20px);
+  opacity: 0;
+}
+.slide-fade-leave-to {
+  transform: translateX(-20px);
+  opacity: 0;
 }
 
 .highlight {
@@ -870,6 +892,7 @@ export default {
   transition: background-color 0.3s ease;
 }
 
+/* Marker-Popups (falls du manche noch drin hast) */
 :global(.maplibregl-popup) {
   z-index: 9999 !important;
 }

@@ -1,9 +1,11 @@
 <template>
   <section
     id="hero"
-    class="w-full p-10 bg-green-500 text-white dark:bg-gray-800" 
+    class="max-h-30 py-6 rounded-lg w-full bg-green-500 text-white dark:bg-gray-800"
   >
-    <h1 class="text-5xl font-bold text-center">Eine Map von Kultur 🗺️</h1>
+    <h1 class="text-4xl font-bold text-center">
+      Kultur in Köln auf einem Fleck
+    </h1>
   </section>
 </template>
 
