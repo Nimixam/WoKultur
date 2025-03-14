@@ -1,5 +1,8 @@
 <template>
-  <section id="map-section" class="w-full h-[600px] flex bg-green-600 text-white dark:bg-gray-700">
+  <section
+    id="map-section"
+    class="w-full h-[600px] flex bg-green-600 text-white dark:bg-gray-700"
+  >
     <!-- Karte links -->
     <div class="map-container w-2/3 h-[200px]">
       <div id="map" class="h-full w-full"></div>
@@ -7,36 +10,57 @@
 
     <!-- Liste rechts -->
     <div
-      class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white">
-      <h2 class="text-lg font-bold mb-4 text-center">Liste der Events (Stadt Köln)</h2>
+      class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white"
+    >
+      <h2 class="text-lg font-bold mb-4 text-center">
+        Liste der Events (Stadt Köln)
+      </h2>
       <ul>
-        <li v-for="(event, index) in filteredEvents" :key="event.id" :id="'event-' + event.id"
+        <li
+          v-for="(event, index) in filteredEvents"
+          :key="event.id"
+          :id="'event-' + event.id"
           @click="focusOnEvent(event)"
-          class="mb-2 p-3 bg-white shadow rounded hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer">
+          class="mb-2 p-3 bg-white shadow rounded hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer"
+        >
           <h3 class="font-semibold">{{ event.title }}</h3>
           <p class="text-sm text-gray-700 dark:text-gray-200">
-            {{ event.description || 'Keine Beschreibung verfügbar' }}
+            {{ event.description || "Keine Beschreibung verfügbar" }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            {{ formatDate(event.begin) }} - {{ formatDate(event.end) }}, {{ event.time || "" }}
+            {{ formatDate(event.begin) }} - {{ formatDate(event.end) }},
+            {{ event.time || "" }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Ort: {{ event.location || "" }}, {{ event.address || "" }} {{ event.district || "" }}
+            Ort: {{ event.location || "" }}, {{ event.address || "" }}
+            {{ event.district || "" }}
           </p>
 
           <!-- Button: mehr/weniger anzeigen -->
-          <button @click.stop="toggleDetails(index)"
-            class="mt-2 px-2 py-1 bg-gray-400 text-white text-sm rounded hover:bg-gray-500 focus:outline-none">
-            {{ expandedIndices.includes(index) ? 'Weniger anzeigen' : 'Mehr anzeigen' }}
+          <button
+            @click.stop="toggleDetails(index)"
+            class="mt-2 px-2 py-1 bg-gray-400 text-white text-sm rounded hover:bg-gray-500 focus:outline-none"
+          >
+            {{
+              expandedIndices.includes(index)
+                ? "Weniger anzeigen"
+                : "Mehr anzeigen"
+            }}
           </button>
 
           <!-- Zusätzliche Informationen (Link & Preis) -->
           <div v-if="expandedIndices.includes(index)" class="mt-2">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Link: <i>{{ event.link || 'Keine Informationen verfügbar' }}</i>
+              Link: <i>{{ event.link || "Keine Informationen verfügbar" }}</i>
             </p>
             <p class="text-sm text-orange-500 dark:text-orange-400">
-              Preis: {{ event.price ? event.price.replace(/<br\s*\ /, '') : 'Keine Angaben' }} </p>
+              Preis:
+              {{
+                event.price
+                  ? event.price.replace(/<br\s*\/?>/g, "")
+                  : "Keine Angaben"
+              }}
+            </p>
           </div>
         </li>
       </ul>
@@ -45,47 +69,47 @@
 </template>
 
 <script>
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import 'leaflet.heat';
-import 'leaflet-extra-markers/dist/js/leaflet.extra-markers.min.js';
-import 'leaflet-routing-machine';
-import 'leaflet.markercluster';
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet.heat";
+import "leaflet-extra-markers/dist/js/leaflet.extra-markers.min.js";
+import "leaflet-routing-machine";
+import "leaflet.markercluster";
 
 const sightsIcon = L.ExtraMarkers.icon({
-  icon: 'fa-star',       // Wähle ein Font Awesome-Symbol (z.B. 'fa-star')
-  markerColor: 'green',   // Wähle die Farbe (z.B. blue, red, green, etc.)
-  shape: 'star',       // Wähle die Form (z.B. circle, square, star)
-  prefix: 'fa'           // Gibt an, dass Font Awesome verwendet wird
+  icon: "fa-star", // Wähle ein Font Awesome-Symbol (z.B. 'fa-star')
+  markerColor: "green", // Wähle die Farbe (z.B. blue, red, green, etc.)
+  shape: "star", // Wähle die Form (z.B. circle, square, star)
+  prefix: "fa", // Gibt an, dass Font Awesome verwendet wird
 });
 
 export default {
-  name: 'EventsMap',
+  name: "EventsMap",
   props: {
     filteredEvents: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     filteredTicketmasterEvents: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     showHeatmap: {
       type: Boolean,
-      default: false
+      default: false,
     },
     showSights: {
       type: Boolean,
-      default: false
+      default: false,
     },
     showTicketmasterEvents: {
       type: Boolean,
-      default: false
+      default: false,
     },
     showCologneEvents: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
   data() {
     return {
@@ -95,30 +119,32 @@ export default {
       heatLayer: null,
       sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
       cologneEventsLayer: null,
-      routingControl: null,       // Für die Routenanzeige
-      userLocation: {               // Standardwert – idealerweise per Geolocation ermitteln
+      routingControl: null, // Für die Routenanzeige
+      userLocation: {
+        // Standardwert – idealerweise per Geolocation ermitteln
         lat: 50.9375,
-        lng: 6.9603
+        lng: 6.9603,
       },
-      expandedIndices: [] // Array, um zu verfolgen, welche Events erweitert sind
-    }
+      expandedIndices: [], // Array, um zu verfolgen, welche Events erweitert sind
+    };
   },
   methods: {
     formatDate(dateString) {
-      if (!dateString) return 'Unbekannt'
+      if (!dateString) return "Unbekannt";
       // "YYYY-MM-DD" => [YYYY, MM, DD]
-      const [year, month, day] = dateString.split('-')
-      return `${day}.${month}.${year}`
+      const [year, month, day] = dateString.split("-");
+      return `${day}.${month}.${year}`;
     },
 
     initializeMap() {
       // Mittelpunkt Köln
-      this.map = L.map('map').setView([50.9375, 6.9603], 12)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map)
+      this.map = L.map("map").setView([50.9375, 6.9603], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        this.map
+      );
     },
 
     addMarkersToMap() {
-
       if (this.cologneEventsLayer) {
         this.map.removeLayer(this.cologneEventsLayer);
       }
@@ -130,33 +156,46 @@ export default {
       // this.markers.clear();
 
       // Neue Marker hinzufügen
-      this.filteredEvents.forEach(event => {
-        const imageUrl = event.img ? `https://www.stadt-koeln.de${event.img}` : null;
+      this.filteredEvents.forEach((event) => {
+        const imageUrl = event.img
+          ? `https://www.stadt-koeln.de${event.img}`
+          : null;
 
         const popupContent = `
           <div class="text-left space-y-1">
-            ${imageUrl
-            ? `<img src="${imageUrl}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-            : ''
-          }
+            ${
+              imageUrl
+                ? `<img src="${imageUrl}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+                : ""
+            }
             <h3 class="font-semibold text-base">${event.title}</h3>
-            <p class="text-sm text-gray-700">${event.description || 'Keine Beschreibung verfügbar'}</p>
+            <p class="text-sm text-gray-700">${
+              event.description || "Keine Beschreibung verfügbar"
+            }</p>
             <p class="text-sm text-gray-500">
-              ${this.formatDate(event.begin)} - ${this.formatDate(event.end)}, ${event.time
-            ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, '')
-            : ''
-          }
+              ${this.formatDate(event.begin)} - ${this.formatDate(
+          event.end
+        )}, ${
+          event.time
+            ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, "")
+            : ""
+        }
             </p>
             <p class="text-sm text-gray-500">
-              <b>Ort:</b> ${event.location || ''}, ${event.address || ''} ${event.district || ''}
+              <b>Ort:</b> ${event.location || ""}, ${event.address || ""} ${
+          event.district || ""
+        }
             </p>
             <p class="text-sm text-gray-500">
-              <b>Preis:</b> ${event.price?.replace(/<br\s*\/?>/gi, '') || 'Keine Angaben'}
+              <b>Preis:</b> ${
+                event.price?.replace(/<br\s*\/?>/gi, "") || "Keine Angaben"
+              }
             </p>
-            ${event.link
-            ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
-            : ''
-          }
+            ${
+              event.link
+                ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
+                : ""
+            }
             <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
             <button 
               class="flex items-center justify-end text-gray-500 font-bold mt-2 cursor-pointer w-full"
@@ -169,22 +208,23 @@ export default {
           </div>
         `;
 
-        const marker = L.marker([event.lat, event.lng])
-          .bindPopup(popupContent);
+        const marker = L.marker([event.lat, event.lng]).bindPopup(popupContent);
 
         // marker.addTo(this.map);
 
         // Füge einen Click-Listener hinzu, wenn das Popup geöffnet wird
-        marker.on('popupopen', (e) => {
-          const button = document.querySelector(`[data-event-id="${event.id}"]`);
+        marker.on("popupopen", (e) => {
+          const button = document.querySelector(
+            `[data-event-id="${event.id}"]`
+          );
           if (button) {
-            button.addEventListener('click', () => this.scrollToList(event.id));
+            button.addEventListener("click", () => this.scrollToList(event.id));
           }
 
           const popupEl = e.popup.getElement();
-          const btn = popupEl.querySelector('.route-link');
+          const btn = popupEl.querySelector(".route-link");
           if (btn) {
-            btn.addEventListener('click', () => {
+            btn.addEventListener("click", () => {
               // Rufe die showRoute-Methode auf – hier als Beispiel mit event-Koordinaten:
               this.showRoute(event.lat, event.lng);
             });
@@ -205,10 +245,10 @@ export default {
     addHeatmap() {
       if (!this.filteredEvents.length) return;
 
-      const heatmapData = this.filteredEvents.map(event => [
+      const heatmapData = this.filteredEvents.map((event) => [
         event.lat, // Latitude
         event.lng, // Longitude
-        0.2        // Gewicht reduzieren (Standard ist 1)
+        0.2, // Gewicht reduzieren (Standard ist 1)
       ]);
 
       if (this.heatLayer) {
@@ -216,18 +256,18 @@ export default {
       }
 
       this.heatLayer = L.heatLayer(heatmapData, {
-        radius: 50,     // Größe der Punkte
-        blur: 25,       // Unschärfe um die Punkte
-        max: 0.3,       // Maximale Intensität weiter reduzieren
-        maxZoom: 10,    // Heatmap wird nicht zu stark bei Zoom sichtbar
+        radius: 50, // Größe der Punkte
+        blur: 25, // Unschärfe um die Punkte
+        max: 0.3, // Maximale Intensität weiter reduzieren
+        maxZoom: 10, // Heatmap wird nicht zu stark bei Zoom sichtbar
         minOpacity: 0.1, // Mindestsichtbarkeit der Heatmap
         gradient: {
-          0.2: 'blue',
-          0.4: 'purple',
-          0.6: 'violet',
-          0.8: 'magenta',
-          1.0: 'red'
-        }
+          0.2: "blue",
+          0.4: "purple",
+          0.6: "violet",
+          0.8: "magenta",
+          1.0: "red",
+        },
       });
 
       this.map.addLayer(this.heatLayer);
@@ -248,25 +288,34 @@ export default {
       // Erstelle eine neue Cluster-Gruppe
       this.markersCluster = L.markerClusterGroup();
 
-      this.filteredTicketmasterEvents.forEach(event => {
+      this.filteredTicketmasterEvents.forEach((event) => {
         // Wir nehmen den ersten Venue-Eintrag
         const venue = event._embedded.venues[0];
         const lat = parseFloat(venue.location.latitude);
         const lng = parseFloat(venue.location.longitude);
         // Popup-Inhalt zusammenstellen:
-        const image = (event.images && event.images.length > 0) ? event.images[0].url : '';
+        const image =
+          event.images && event.images.length > 0 ? event.images[0].url : "";
         const name = event.name;
-        const date = event.dates.start.localDate || 'kein Datum verfügbar';
-        const time = event.dates.start.localTime || '';
-        const address = venue.address ? venue.address.line1 : 'keine Adresse verfügbar';
-        const city = venue.city ? venue.city.name : '';
-        const eventUrl = event.url || 'kein Link verfügbar';
+        const date = event.dates.start.localDate || "kein Datum verfügbar";
+        const time = event.dates.start.localTime || "";
+        const address = venue.address
+          ? venue.address.line1
+          : "keine Adresse verfügbar";
+        const city = venue.city ? venue.city.name : "";
+        const eventUrl = event.url || "kein Link verfügbar";
 
         const popupContent = `
               <div class="text-left space-y-1">
-                ${image ? `<img src="${image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">` : ''}
+                ${
+                  image
+                    ? `<img src="${image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+                    : ""
+                }
                 <h3 class="font-semibold text-base">${name}</h3>
-                <p class="text-sm text-gray-500">${this.formatDate(date)}, ${time ? time.slice(0, 5) + " Uhr" : time}</p>
+                <p class="text-sm text-gray-500">${this.formatDate(date)}, ${
+          time ? time.slice(0, 5) + " Uhr" : time
+        }</p>
                 <p class="text-sm text-gray-500"><b>Ort</b>: ${address}, ${city}</p>
                 <p class="text-sm text-blue-600"><b>Link</b>: <a href="${eventUrl}" target="_blank" class="underline">Zu Ticketmaster</a></p>
                 </div>
@@ -274,11 +323,11 @@ export default {
 
         // Definiere ein rotes Marker-Icon mit ExtraMarkers (verwende z. B. ein Ticket-Icon)
         const ticketIcon = L.ExtraMarkers.icon({
-          icon: 'fa-circle', // FontAwesome-Symbol; stelle sicher, dass FontAwesome eingebunden ist
-          markerColor: 'red',
-          shape: 'circle',
-          prefix: 'fa',
-          iconColor: 'white'
+          icon: "fa-circle", // FontAwesome-Symbol; stelle sicher, dass FontAwesome eingebunden ist
+          markerColor: "red",
+          shape: "circle",
+          prefix: "fa",
+          iconColor: "white",
         });
         const marker = L.marker([lat, lng], { icon: ticketIcon });
         marker.bindPopup(popupContent);
@@ -298,15 +347,15 @@ export default {
       // Erstelle eine neue LayerGroup
       this.sightsLayer = L.layerGroup();
       // Abrufen der Sehenswürdigkeiten-Daten
-      fetch('http://localhost:3000/api/sehenswuerdigkeiten')
-        .then(response => response.json())
-        .then(data => {
-          data.features.forEach(feature => {
+      fetch("http://localhost:3000/api/sehenswuerdigkeiten")
+        .then((response) => response.json())
+        .then((data) => {
+          data.features.forEach((feature) => {
             const lat = feature.geometry.y;
             const lng = feature.geometry.x;
-            const name = feature.attributes.name || 'Kein Name';
-            const address = feature.attributes.adresse || 'Keine Adresse';
-            const district = feature.attributes.stadtteil || '';
+            const name = feature.attributes.name || "Kein Name";
+            const address = feature.attributes.adresse || "Keine Adresse";
+            const district = feature.attributes.stadtteil || "";
 
             // Erstelle einen eindeutigen Button-ID (hier z.B. basierend auf Name und lat)
             const popupContent = `
@@ -317,11 +366,11 @@ export default {
             marker.bindPopup(popupContent);
 
             // Sobald das Popup geöffnet wird, füge den Click-Listener hinzu:
-            marker.on('popupopen', (e) => {
+            marker.on("popupopen", (e) => {
               const popupEl = e.popup.getElement();
-              const btn = popupEl.querySelector('.route-link');
+              const btn = popupEl.querySelector(".route-link");
               if (btn) {
-                btn.addEventListener('click', () => {
+                btn.addEventListener("click", () => {
                   this.showRoute(lat, lng);
                 });
               }
@@ -331,13 +380,15 @@ export default {
           });
           this.sightsLayer.addTo(this.map);
         })
-        .catch(error => console.error('Fehler beim Laden der Sehenswürdigkeiten:', error));
+        .catch((error) =>
+          console.error("Fehler beim Laden der Sehenswürdigkeiten:", error)
+        );
     },
     removeSightsMarkers() {
       if (this.sightsLayer) {
         this.sightsLayer.eachLayer((layer) => {
-          layer.off();           // Alle Event-Listener entfernen
-          layer.unbindPopup();   // Popup unbinden
+          layer.off(); // Alle Event-Listener entfernen
+          layer.unbindPopup(); // Popup unbinden
         });
         this.map.removeLayer(this.sightsLayer);
         this.sightsLayer = null;
@@ -353,14 +404,14 @@ export default {
       this.routingControl = L.Routing.control({
         waypoints: [
           L.latLng(this.userLocation.lat, this.userLocation.lng),
-          L.latLng(destinationLat, destinationLng)
+          L.latLng(destinationLat, destinationLng),
         ],
         draggableWaypoints: true,
         addWaypoints: false,
         routeWhileDragging: true,
         showAlternatives: false,
         router: L.Routing.osrmv1({
-          serviceUrl: 'https://router.project-osrm.org/route/v1'
+          serviceUrl: "https://router.project-osrm.org/route/v1",
         }),
         // Erzeuge eigene Marker (für Start und Ende)
         createMarker: function (i, wp, nWps) {
@@ -368,60 +419,60 @@ export default {
           if (i === 0) {
             // Startmarker: Symbol "A"
             icon = L.divIcon({
-              className: 'custom-route-marker start-marker',
+              className: "custom-route-marker start-marker",
               html: '<div style="background:yellow;color:black;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-weight:bold;">A</div>',
               iconSize: [30, 30],
-              iconAnchor: [15, 30]
+              iconAnchor: [15, 30],
             });
           } else if (i === nWps - 1) {
             // Endmarker: Symbol "B"
             icon = L.divIcon({
-              className: 'custom-route-marker end-marker',
+              className: "custom-route-marker end-marker",
               html: '<div style="background:yellow;color:black;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-weight:bold;">B</div>',
               iconSize: [30, 30],
-              iconAnchor: [15, 30]
+              iconAnchor: [15, 30],
             });
           }
           return L.marker(wp.latLng, { draggable: true, icon: icon });
         },
         lineOptions: {
-          styles: [{ color: 'blue', opacity: 0.6, weight: 4 }]
-        }
+          styles: [{ color: "blue", opacity: 0.6, weight: 4 }],
+        },
       }).addTo(this.map);
     },
 
     focusOnEvent(event) {
-      const marker = this.markers.get(event.id)
+      const marker = this.markers.get(event.id);
       if (marker) {
-        this.map.flyTo(marker.getLatLng(), 15)
-        marker.openPopup()
+        this.map.flyTo(marker.getLatLng(), 15);
+        marker.openPopup();
       }
     },
     scrollToList(eventId) {
       const safeId = `event-${eventId}`;
       const listItem = document.getElementById(safeId); // Element in der Liste finden
       if (listItem) {
-        listItem.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Smooth-Scroll
-        listItem.classList.add('highlight'); // Highlight hinzufügen
+        listItem.scrollIntoView({ behavior: "smooth", block: "center" }); // Smooth-Scroll
+        listItem.classList.add("highlight"); // Highlight hinzufügen
         setTimeout(() => {
-          listItem.classList.remove('highlight'); // Highlight nach 2 Sekunden entfernen
+          listItem.classList.remove("highlight"); // Highlight nach 2 Sekunden entfernen
         }, 2000);
       }
     },
     toggleDetails(index) {
       if (this.expandedIndices.includes(index)) {
-        this.expandedIndices = this.expandedIndices.filter(i => i !== index)
+        this.expandedIndices = this.expandedIndices.filter((i) => i !== index);
       } else {
-        this.expandedIndices.push(index)
+        this.expandedIndices.push(index);
       }
-    }
+    },
   },
   watch: {
     filteredEvents: {
       handler() {
         if (this.showCologneEvents) {
           if (this.map) {
-            this.addMarkersToMap()
+            this.addMarkersToMap();
           }
         }
         if (this.showHeatmap) {
@@ -429,17 +480,17 @@ export default {
           this.addHeatmap();
         }
       },
-      immediate: true
+      immediate: true,
     },
     filteredTicketmasterEvents: {
       handler() {
         if (this.showTicketmasterEvents) {
           if (this.map) {
-            this.addTicketmasterMarkers()
+            this.addTicketmasterMarkers();
           }
         }
       },
-      immediate: true
+      immediate: true,
     },
     showHeatmap: {
       handler(newVal) {
@@ -449,7 +500,7 @@ export default {
           this.removeHeatmap();
         }
       },
-      immediate: true
+      immediate: true,
     },
     showSights: {
       handler(newVal) {
@@ -459,35 +510,33 @@ export default {
           this.removeSightsMarkers();
         }
       },
-      immediate: true
+      immediate: true,
     },
     showCologneEvents: {
       handler(newVal) {
         if (newVal == true) {
           this.addMarkersToMap();
-        }
-        else if (newVal == false && this.cologneEventsLayer) {
+        } else if (newVal == false && this.cologneEventsLayer) {
           this.map.removeLayer(this.cologneEventsLayer);
           this.cologneEventsLayer = null;
         }
-      }
+      },
     },
     showTicketmasterEvents: {
       handler(newVal) {
         if (newVal == true) {
           this.addTicketmasterMarkers();
-        }
-        else if (newVal == false && this.markersCluster) {
+        } else if (newVal == false && this.markersCluster) {
           this.map.removeLayer(this.markersCluster);
           this.markersCluster = null;
         }
-      }
-    }
+      },
+    },
   },
   mounted() {
-    this.initializeMap()
-  }
-}
+    this.initializeMap();
+  },
+};
 </script>
 
 <style scoped>
