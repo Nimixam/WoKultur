@@ -9,16 +9,15 @@
     <div
       class="flex flex-col md:flex-row items-center justify-between mt-4 px-4 space-y-4 md:space-y-0 md:space-x-4"
     >
-      <!-- Suchleiste (Tailwind Snippet) -->
+      <!-- Suchleiste -->
       <form class="relative flex-1 min-w-[200px]" @submit.prevent>
         <label
           for="default-search"
           class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
+          >Suche</label
         >
-          Suche
-        </label>
         <div class="relative">
-          <!-- Lupe (Icon) links -->
+          <!-- Lupe-Icon -->
           <div
             class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none"
           >
@@ -38,7 +37,6 @@
               />
             </svg>
           </div>
-          <!-- Such-Input -->
           <input
             type="search"
             id="default-search"
@@ -74,12 +72,12 @@
         </div>
       </form>
 
-      <!-- Button-Gruppe (als Ersatz für die Checkboxen) -->
+      <!-- Button-Gruppe -->
       <div class="w-full md:w-auto">
         <ul
           class="gap-x-2 items-center w-full text-sm font-medium rounded-lg sm:flex"
         >
-          <!-- 1) Events (Stadt Köln) -->
+          <!-- Events (Stadt Köln) -->
           <li class="w-full">
             <button
               type="button"
@@ -94,7 +92,7 @@
               Events (Stadt Köln)
             </button>
           </li>
-          <!-- 2) Großevents (Ticketmaster) -->
+          <!-- Großevents (Ticketmaster) -->
           <li class="w-full">
             <button
               type="button"
@@ -109,7 +107,7 @@
               Großevents (Ticketmaster)
             </button>
           </li>
-          <!-- 3) Sehenswürdigkeiten -->
+          <!-- Sehenswürdigkeiten -->
           <li class="w-full">
             <button
               type="button"
@@ -124,7 +122,7 @@
               Sehenswürdigkeiten
             </button>
           </li>
-          <!-- 4) Heatmap -->
+          <!-- Heatmap -->
           <li class="w-full">
             <button
               type="button"
@@ -139,6 +137,21 @@
               Heatmap
             </button>
           </li>
+          <!-- Veedel -->
+          <li class="w-full">
+            <button
+              type="button"
+              @click="showVeedel = !showVeedel"
+              :class="[
+                'w-full px-5 py-2.5 focus:outline-none font-medium rounded-lg text-sm me-2 mb-2',
+                showVeedel
+                  ? 'bg-green-700 text-white border border-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800'
+                  : 'bg-green-100 text-green-600 border border-green-200 hover:bg-green-200',
+              ]"
+            >
+              Veedel
+            </button>
+          </li>
         </ul>
       </div>
 
@@ -151,7 +164,7 @@
       </button>
     </div>
 
-    <!-- Map, Liste, Filter -->
+    <!-- Map, Liste und Filter -->
     <div
       class="relative flex transition-all duration-300 mt-4"
       style="height: 60vh"
@@ -167,6 +180,7 @@
           :showSights="showSights"
           :showTicketmasterEvents="showTicketmasterEvents"
           :showCologneEvents="showCologneEvents"
+          :showVeedel="showVeedel"
         />
       </div>
 
@@ -220,35 +234,29 @@ const toggleDarkMode = () => {
   document.documentElement.classList.toggle("dark", darkMode.value);
 };
 
-// Event-Daten
+// Event-Daten und Filter
 const allEvents = ref([]);
-
-// Zentrale Filter-Logik
 const filteredEvents = ref([]);
 const filteredTicketmasterEvents = ref([]);
-const selectedCategory = ref(""); // Aktuell ausgewählte Kategorie
-
-// Filter-Sidebar
+const selectedCategory = ref("");
 const isFilterOpen = ref(false);
 const toggleFilter = () => {
   isFilterOpen.value = !isFilterOpen.value;
 };
+const filterCatMessage = ref("");
+const daysToFilter = ref(14);
 
-const filterCatMessage = ref(""); // Nachricht für fehlende Events
-const daysToFilter = ref(14); // Standardwert für den Slider
-
-// Button-States (statt Checkboxen)
+// Button-States
 const showHeatmap = ref(false);
 const showSights = ref(false);
 const showTicketmasterEvents = ref(false);
 const showCologneEvents = ref(true);
+const showVeedel = ref(false);
 
 // Suche
 const searchQuery = ref("");
 const isSearching = ref(false);
 let searchTimeout;
-
-// Debounce der Sucheingabe
 const onSearchInput = () => {
   isSearching.value = true;
   clearTimeout(searchTimeout);
@@ -407,10 +415,8 @@ function filterBySearchQuery(eventsData) {
   );
 }
 
-// Beim ersten Mounten direkt laden
 loadEvents();
 
-// Beobachte Änderungen an allEvents und filteredEvents
 watch([allEvents, filteredEvents], ([newAllEvents, newFilteredEvents]) => {
   if (newAllEvents.length === 0 || newFilteredEvents.length === 0) {
     filterCatMessage.value = "Es gibt keine Stadt Köln Events mit dem Filter";

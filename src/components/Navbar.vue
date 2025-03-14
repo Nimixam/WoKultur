@@ -7,7 +7,8 @@
     >
       <!-- Logo und Name -->
       <a
-        href="http://localhost:5176/"
+        href="#"
+        onclick="window.scrollTo(0, 0); return false;"
         class="flex items-center space-x-3 rtl:space-x-reverse"
       >
         <img src="@/assets/images/logo.png" class="h-12" alt="Logo" />
