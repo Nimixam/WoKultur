@@ -4,7 +4,7 @@
     class="w-full h-[600px] flex bg-green-600 text-white dark:bg-gray-700"
   >
     <!-- Map container -->
-    <div class="map-container w-2/3 h-[200px]">
+    <div class="map-container w-2/3 h-full">
       <div id="map" class="h-full w-full"></div>
     </div>
 
@@ -57,7 +57,7 @@
               Preis:
               {{
                 event.price
-                  ? event.price.replace(/<br\s*\/?>/g, "")
+                  ? event.price.replace(/<br\s*\/?>/gi, "")
                   : "Keine Angaben"
               }}
             </p>
@@ -110,7 +110,7 @@ export default {
         lat: 50.9375,
         lng: 6.9603,
       },
-      expandedIndices: [], // Array to track expanded events
+      expandedIndices: [],
     };
   },
   methods: {
@@ -120,29 +120,47 @@ export default {
       return `${day}.${month}.${year}`;
     },
 
+    // Methode zum Anhängen von Listenern an das Popup
+    attachPopupListeners(popup, coords, properties = null) {
+      setTimeout(() => {
+        if (properties && properties.id) {
+          const jumpBtn = document.getElementById(
+            `jump-to-list-${properties.id}`
+          );
+          if (jumpBtn) {
+            jumpBtn.addEventListener("click", () =>
+              this.scrollToList(properties.id)
+            );
+          }
+        }
+        const routeBtn = popup.getElement().querySelector(".route-link");
+        if (routeBtn) {
+          routeBtn.addEventListener("click", () => {
+            this.showRoute(coords.lat, coords.lng);
+          });
+        }
+      }, 100);
+    },
+
     initializeMap() {
-      // Initialize MapLibre map
+      const MAPTILER_API_KEY = "3n5o3DZeRN1onPtXPw0i";
+
       this.map = new maplibregl.Map({
         container: "map",
-        style: "https://demotiles.maplibre.org/style.json", // Default OSM style
-        center: [6.9603, 50.9375], // Note: MapLibre uses [lng, lat] format!
+        style: `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_API_KEY}`,
+        center: [6.9603, 50.9375],
         zoom: 12,
       });
 
-      // Add navigation controls
       this.map.addControl(new maplibregl.NavigationControl());
-
-      // Add scale control
       this.map.addControl(new maplibregl.ScaleControl());
 
-      // Wait for map to load before adding data
       this.map.on("load", () => {
         if (this.showCologneEvents) this.addMarkersToMap();
         if (this.showHeatmap) this.addHeatmap();
         if (this.showSights) this.addSightsMarkers();
         if (this.showTicketmasterEvents) this.addTicketmasterMarkers();
 
-        // Try to get user's location
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -160,40 +178,36 @@ export default {
     },
 
     addMarkersToMap() {
-      // Remove existing markers if they exist
       if (this.map.getSource("cologne-events")) {
         this.map.removeLayer("cologne-events-layer");
         this.map.removeSource("cologne-events");
       }
 
-      // Create GeoJSON features for events
-      this.eventFeatures = this.filteredEvents.map((event) => {
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [event.lng, event.lat],
-          },
-          properties: {
-            id: event.id,
-            title: event.title,
-            description: event.description || "Keine Beschreibung verfügbar",
-            begin: event.begin,
-            end: event.end,
-            time: event.time || "",
-            location: event.location || "",
-            address: event.address || "",
-            district: event.district || "",
-            price: event.price
-              ? event.price.replace(/<br\s*\ /, "")
-              : "Keine Angaben",
-            link: event.link || "",
-            img: event.img ? `https://www.stadt-koeln.de${event.img}` : null,
-          },
-        };
-      });
+      // Koordinaten explizit in Zahlen umwandeln
+      this.eventFeatures = this.filteredEvents.map((event) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [parseFloat(event.lng), parseFloat(event.lat)],
+        },
+        properties: {
+          id: event.id,
+          title: event.title,
+          description: event.description || "Keine Beschreibung verfügbar",
+          begin: event.begin,
+          end: event.end,
+          time: event.time || "",
+          location: event.location || "",
+          address: event.address || "",
+          district: event.district || "",
+          price: event.price
+            ? event.price.replace(/<br\s*\/?>/gi, "")
+            : "Keine Angaben",
+          link: event.link || "",
+          img: event.img ? `https://www.stadt-koeln.de${event.img}` : null,
+        },
+      }));
 
-      // Add GeoJSON source
       this.map.addSource("cologne-events", {
         type: "geojson",
         data: {
@@ -202,7 +216,6 @@ export default {
         },
       });
 
-      // Add circle layer for event markers
       this.map.addLayer({
         id: "cologne-events-layer",
         type: "circle",
@@ -215,13 +228,11 @@ export default {
         },
       });
 
-      // Handle click events on markers
       this.map.on("click", "cologne-events-layer", (e) => {
         const feature = e.features[0];
         const coordinates = feature.geometry.coordinates.slice();
         const properties = feature.properties;
 
-        // Create popup HTML content
         const imageUrl = properties.img;
         const popupContent = `
           <div class="text-left space-y-1">
@@ -269,39 +280,38 @@ export default {
           </div>
         `;
 
-        // Create and display popup
-        const popup = new maplibregl.Popup()
-          .setLngLat(coordinates)
-          .setHTML(popupContent)
-          .addTo(this.map);
-
-        // Add event listeners once popup is added to DOM
-        popup.on("open", () => {
-          setTimeout(() => {
-            const jumpBtn = document.getElementById(
-              `jump-to-list-${properties.id}`
-            );
-            if (jumpBtn) {
-              jumpBtn.addEventListener("click", () =>
-                this.scrollToList(properties.id)
-              );
-            }
-
-            const routeBtn = document.querySelector(".route-link");
-            if (routeBtn) {
-              routeBtn.addEventListener("click", () => {
-                this.showRoute(coordinates[1], coordinates[0]);
-              });
-            }
-          }, 100);
+        // Zum Event-Standort fliegen
+        this.map.flyTo({
+          center: coordinates,
+          zoom: Math.max(this.map.getZoom() - 0.3, 10),
+          duration: 300,
         });
+
+        setTimeout(() => {
+          // Popup wird im document.body angehängt, sodass es nicht vom Kartenrand abgeschnitten wird
+          const popup = new maplibregl.Popup({
+            container: document.body,
+            anchor: "bottom",
+            offset: 25,
+            maxWidth: "300px",
+          })
+            .setLngLat(coordinates)
+            .setHTML(popupContent)
+            .addTo(this.map);
+
+          popup.on("open", () => {
+            this.attachPopupListeners(
+              popup,
+              { lat: coordinates[1], lng: coordinates[0] },
+              properties
+            );
+          });
+        }, 350);
       });
 
-      // Change cursor on hover
       this.map.on("mouseenter", "cologne-events-layer", () => {
         this.map.getCanvas().style.cursor = "pointer";
       });
-
       this.map.on("mouseleave", "cologne-events-layer", () => {
         this.map.getCanvas().style.cursor = "";
       });
@@ -310,25 +320,22 @@ export default {
     addHeatmap() {
       if (!this.filteredEvents.length) return;
 
-      // Remove existing heatmap if it exists
       if (this.map.getSource("heatmap-data")) {
         this.map.removeLayer("heatmap-layer");
         this.map.removeSource("heatmap-data");
       }
 
-      // Create GeoJSON for heatmap
       const heatmapPoints = this.filteredEvents.map((event) => ({
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [event.lng, event.lat],
+          coordinates: [parseFloat(event.lng), parseFloat(event.lat)],
         },
         properties: {
           intensity: 0.2,
         },
       }));
 
-      // Add GeoJSON source for heatmap
       this.map.addSource("heatmap-data", {
         type: "geojson",
         data: {
@@ -337,7 +344,6 @@ export default {
         },
       });
 
-      // Add heatmap layer
       this.map.addLayer({
         id: "heatmap-layer",
         type: "heatmap",
@@ -377,7 +383,6 @@ export default {
     },
 
     addTicketmasterMarkers() {
-      // Remove existing Ticketmaster markers
       if (this.map.getSource("ticketmaster-events")) {
         this.map.removeLayer("ticketmaster-clusters");
         this.map.removeLayer("ticketmaster-cluster-count");
@@ -385,7 +390,6 @@ export default {
         this.map.removeSource("ticketmaster-events");
       }
 
-      // Create GeoJSON data for Ticketmaster events
       const features = this.filteredTicketmasterEvents.map((event) => {
         const venue = event._embedded.venues[0];
         const lat = parseFloat(venue.location.latitude);
@@ -415,7 +419,6 @@ export default {
         };
       });
 
-      // Add clustered GeoJSON source
       this.map.addSource("ticketmaster-events", {
         type: "geojson",
         data: {
@@ -427,7 +430,6 @@ export default {
         clusterRadius: 50,
       });
 
-      // Add a layer for the clusters
       this.map.addLayer({
         id: "ticketmaster-clusters",
         type: "circle",
@@ -437,25 +439,16 @@ export default {
           "circle-color": [
             "step",
             ["get", "point_count"],
-            "#ff4d4d", // Red for small clusters
+            "#ff4d4d",
             5,
-            "#ff1a1a", // Darker red for medium clusters
+            "#ff1a1a",
             10,
-            "#cc0000", // Very dark red for large clusters
+            "#cc0000",
           ],
-          "circle-radius": [
-            "step",
-            ["get", "point_count"],
-            20, // Size for small clusters
-            5,
-            25, // Size for medium clusters
-            10,
-            30, // Size for large clusters
-          ],
+          "circle-radius": ["step", ["get", "point_count"], 20, 5, 25, 10, 30],
         },
       });
 
-      // Add a layer for the cluster counts
       this.map.addLayer({
         id: "ticketmaster-cluster-count",
         type: "symbol",
@@ -471,7 +464,6 @@ export default {
         },
       });
 
-      // Add a layer for individual points (non-clustered)
       this.map.addLayer({
         id: "ticketmaster-unclustered-point",
         type: "circle",
@@ -485,12 +477,10 @@ export default {
         },
       });
 
-      // Add click handler for individual points
       this.map.on("click", "ticketmaster-unclustered-point", (e) => {
         const properties = e.features[0].properties;
         const coordinates = e.features[0].geometry.coordinates.slice();
 
-        // Generate popup content
         const popupContent = `
           <div class="text-left space-y-1">
             ${
@@ -515,14 +505,16 @@ export default {
           </div>
         `;
 
-        // Create and display popup
-        new maplibregl.Popup()
+        new maplibregl.Popup({
+          container: document.body,
+          anchor: "bottom",
+          offset: 25,
+        })
           .setLngLat(coordinates)
           .setHTML(popupContent)
           .addTo(this.map);
       });
 
-      // Handle clicks on clusters to zoom in
       this.map.on("click", "ticketmaster-clusters", (e) => {
         const features = this.map.queryRenderedFeatures(e.point, {
           layers: ["ticketmaster-clusters"],
@@ -533,7 +525,6 @@ export default {
           .getSource("ticketmaster-events")
           .getClusterExpansionZoom(clusterId, (err, zoom) => {
             if (err) return;
-
             this.map.easeTo({
               center: features[0].geometry.coordinates,
               zoom: zoom,
@@ -541,52 +532,42 @@ export default {
           });
       });
 
-      // Change cursor on hover
       this.map.on("mouseenter", "ticketmaster-unclustered-point", () => {
         this.map.getCanvas().style.cursor = "pointer";
       });
-
       this.map.on("mouseleave", "ticketmaster-unclustered-point", () => {
         this.map.getCanvas().style.cursor = "";
       });
-
       this.map.on("mouseenter", "ticketmaster-clusters", () => {
         this.map.getCanvas().style.cursor = "pointer";
       });
-
       this.map.on("mouseleave", "ticketmaster-clusters", () => {
         this.map.getCanvas().style.cursor = "";
       });
     },
 
     addSightsMarkers() {
-      // Remove existing sights markers
       if (this.map.getSource("sights-data")) {
         this.map.removeLayer("sights-layer");
         this.map.removeSource("sights-data");
       }
 
-      // Fetch sights data
       fetch("http://localhost:3000/api/sehenswuerdigkeiten")
         .then((response) => response.json())
         .then((data) => {
-          // Create GeoJSON features
-          const features = data.features.map((feature) => {
-            return {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [feature.geometry.x, feature.geometry.y],
-              },
-              properties: {
-                name: feature.attributes.name || "Kein Name",
-                address: feature.attributes.adresse || "Keine Adresse",
-                district: feature.attributes.stadtteil || "",
-              },
-            };
-          });
+          const features = data.features.map((feature) => ({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [feature.geometry.x, feature.geometry.y],
+            },
+            properties: {
+              name: feature.attributes.name || "Kein Name",
+              address: feature.attributes.adresse || "Keine Adresse",
+              district: feature.attributes.stadtteil || "",
+            },
+          }));
 
-          // Add GeoJSON source
           this.map.addSource("sights-data", {
             type: "geojson",
             data: {
@@ -595,55 +576,52 @@ export default {
             },
           });
 
-          // Add a layer for the sights as circles with green color
           this.map.addLayer({
             id: "sights-layer",
             type: "circle",
             source: "sights-data",
             paint: {
               "circle-radius": 8,
-              "circle-color": "#4CAF50", // Green color
+              "circle-color": "#4CAF50",
               "circle-stroke-width": 2,
               "circle-stroke-color": "#ffffff",
             },
           });
 
-          // Add click event for popups
           this.map.on("click", "sights-layer", (e) => {
             const feature = e.features[0];
             const coordinates = feature.geometry.coordinates.slice();
             const properties = feature.properties;
 
-            // Create popup content
             const popupContent = `
+            <div style="color: gray;">
               <strong>${properties.name}</strong><br>${properties.address}, ${properties.district}<br>
               <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
             `;
 
-            // Create and display popup
-            const popup = new maplibregl.Popup()
-              .setLngLat(coordinates)
-              .setHTML(popupContent)
-              .addTo(this.map);
+            setTimeout(() => {
+              const popup = new maplibregl.Popup({
+                container: document.body,
+                anchor: "bottom",
+                offset: 25,
+                maxWidth: "350px",
+              })
+                .setLngLat(coordinates)
+                .setHTML(popupContent)
+                .addTo(this.map);
 
-            // Add event listener for route button
-            popup.on("open", () => {
-              setTimeout(() => {
-                const routeBtn = document.querySelector(".route-link");
-                if (routeBtn) {
-                  routeBtn.addEventListener("click", () => {
-                    this.showRoute(coordinates[1], coordinates[0]);
-                  });
-                }
-              }, 100);
-            });
+              popup.on("open", () => {
+                this.attachPopupListeners(popup, {
+                  lat: coordinates[1],
+                  lng: coordinates[0],
+                });
+              });
+            }, 350);
           });
 
-          // Change cursor on hover
           this.map.on("mouseenter", "sights-layer", () => {
             this.map.getCanvas().style.cursor = "pointer";
           });
-
           this.map.on("mouseleave", "sights-layer", () => {
             this.map.getCanvas().style.cursor = "";
           });
@@ -661,21 +639,17 @@ export default {
     },
 
     showRoute(destinationLat, destinationLng) {
-      // Define user location and destination in [long, lat] format
       const origin = [this.userLocation.lng, this.userLocation.lat];
       const destination = [destinationLng, destinationLat];
 
-      // Remove previous route if it exists
       if (this.map.getSource("route")) {
         this.map.removeLayer("route-layer");
         this.map.removeSource("route");
       }
 
-      // Remove previous markers if they exist
       if (this.startMarker) this.startMarker.remove();
       if (this.endMarker) this.endMarker.remove();
 
-      // Add start and end markers
       this.startMarker = new maplibregl.Marker({ color: "#00FF00" })
         .setLngLat(origin)
         .addTo(this.map);
@@ -684,7 +658,6 @@ export default {
         .setLngLat(destination)
         .addTo(this.map);
 
-      // Call the OSRM API to get the route
       fetch(
         `https://router.project-osrm.org/route/v1/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?overview=full&geometries=geojson`
       )
@@ -698,7 +671,6 @@ export default {
           const route = data.routes[0];
           const routeGeometry = route.geometry;
 
-          // Add the route to the map
           this.map.addSource("route", {
             type: "geojson",
             data: {
@@ -723,15 +695,12 @@ export default {
             },
           });
 
-          // Fit the map to the route
           const bounds = new maplibregl.LngLatBounds();
           routeGeometry.coordinates.forEach((coord) => {
             bounds.extend(coord);
           });
 
-          this.map.fitBounds(bounds, {
-            padding: 50,
-          });
+          this.map.fitBounds(bounds, { padding: 50 });
         })
         .catch((error) => console.error("Error fetching route:", error));
     },
@@ -739,12 +708,15 @@ export default {
     focusOnEvent(event) {
       if (!this.map) return;
 
+      const lng = parseFloat(event.lng);
+      const lat = parseFloat(event.lat);
+
       this.map.flyTo({
-        center: [event.lng, event.lat],
+        center: [lng, lat],
         zoom: 15,
+        duration: 300,
       });
 
-      // Create a popup for the event
       const popupContent = `
         <div class="text-left space-y-1">
           ${
@@ -782,21 +754,21 @@ export default {
         </div>
       `;
 
-      const popup = new maplibregl.Popup()
-        .setLngLat([event.lng, event.lat])
-        .setHTML(popupContent)
-        .addTo(this.map);
+      setTimeout(() => {
+        const popup = new maplibregl.Popup({
+          container: document.body,
+          anchor: "bottom",
+          offset: 25,
+          maxWidth: "300px",
+        })
+          .setLngLat([lng, lat])
+          .setHTML(popupContent)
+          .addTo(this.map);
 
-      popup.on("open", () => {
-        setTimeout(() => {
-          const routeBtn = document.querySelector(".route-link");
-          if (routeBtn) {
-            routeBtn.addEventListener("click", () => {
-              this.showRoute(event.lat, event.lng);
-            });
-          }
-        }, 100);
-      });
+        popup.on("open", () => {
+          this.attachPopupListeners(popup, { lat, lng });
+        });
+      }, 350);
     },
 
     scrollToList(eventId) {
@@ -832,7 +804,6 @@ export default {
       },
       immediate: true,
     },
-
     filteredTicketmasterEvents: {
       handler() {
         if (this.showTicketmasterEvents && this.map) {
@@ -841,37 +812,23 @@ export default {
       },
       immediate: true,
     },
-
     showHeatmap: {
       handler(newVal) {
         if (!this.map) return;
-
-        if (newVal) {
-          this.addHeatmap();
-        } else {
-          this.removeHeatmap();
-        }
+        newVal ? this.addHeatmap() : this.removeHeatmap();
       },
       immediate: true,
     },
-
     showSights: {
       handler(newVal) {
         if (!this.map) return;
-
-        if (newVal) {
-          this.addSightsMarkers();
-        } else {
-          this.removeSightsMarkers();
-        }
+        newVal ? this.addSightsMarkers() : this.removeSightsMarkers();
       },
       immediate: true,
     },
-
     showCologneEvents: {
       handler(newVal) {
         if (!this.map) return;
-
         if (newVal) {
           this.addMarkersToMap();
         } else if (this.map.getSource("cologne-events")) {
@@ -880,11 +837,9 @@ export default {
         }
       },
     },
-
     showTicketmasterEvents: {
       handler(newVal) {
         if (!this.map) return;
-
         if (newVal) {
           this.addTicketmasterMarkers();
         } else if (this.map.getSource("ticketmaster-events")) {
@@ -925,13 +880,14 @@ export default {
   transition: background-color 0.3s ease;
 }
 
-/* Custom styles for MapLibre popups */
-:global(.maplibregl-popup-content) {
-  padding: 15px;
-  max-width: 300px;
+:global(.maplibregl-popup) {
+  z-index: 9999 !important;
 }
 
-:global(.maplibregl-popup-close-button) {
-  font-size: 16px;
+:global(.maplibregl-popup-content) {
+  max-width: 350px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 15px;
 }
 </style>
