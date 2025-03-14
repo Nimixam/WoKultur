@@ -3,12 +3,12 @@
     id="map-section"
     class="w-full h-[600px] flex bg-green-600 text-white dark:bg-gray-700"
   >
-    <!-- Karte links -->
+    <!-- Map container -->
     <div class="map-container w-2/3 h-[200px]">
       <div id="map" class="h-full w-full"></div>
     </div>
 
-    <!-- Liste rechts -->
+    <!-- Events list -->
     <div
       class="list-container w-1/3 h-full bg-gray-100 text-black p-4 overflow-y-auto dark:bg-gray-800 dark:text-white"
     >
@@ -69,19 +69,8 @@
 </template>
 
 <script>
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet.heat";
-import "leaflet-extra-markers/dist/js/leaflet.extra-markers.min.js";
-import "leaflet-routing-machine";
-import "leaflet.markercluster";
-
-const sightsIcon = L.ExtraMarkers.icon({
-  icon: "fa-star", // Wähle ein Font Awesome-Symbol (z.B. 'fa-star')
-  markerColor: "green", // Wähle die Farbe (z.B. blue, red, green, etc.)
-  shape: "star", // Wähle die Form (z.B. circle, square, star)
-  prefix: "fa", // Gibt an, dass Font Awesome verwendet wird
-});
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 export default {
   name: "EventsMap",
@@ -114,53 +103,126 @@ export default {
   data() {
     return {
       map: null,
-      markers: new Map(),
-      markersCluster: null,
-      heatLayer: null,
-      sightsLayer: null, // Hier werden die Sehenswürdigkeiten-Marker gespeichert
-      cologneEventsLayer: null,
-      routingControl: null, // Für die Routenanzeige
+      eventFeatures: [],
+      startMarker: null,
+      endMarker: null,
       userLocation: {
-        // Standardwert – idealerweise per Geolocation ermitteln
         lat: 50.9375,
         lng: 6.9603,
       },
-      expandedIndices: [], // Array, um zu verfolgen, welche Events erweitert sind
+      expandedIndices: [], // Array to track expanded events
     };
   },
   methods: {
     formatDate(dateString) {
       if (!dateString) return "Unbekannt";
-      // "YYYY-MM-DD" => [YYYY, MM, DD]
       const [year, month, day] = dateString.split("-");
       return `${day}.${month}.${year}`;
     },
 
     initializeMap() {
-      // Mittelpunkt Köln
-      this.map = L.map("map").setView([50.9375, 6.9603], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        this.map
-      );
+      // Initialize MapLibre map
+      this.map = new maplibregl.Map({
+        container: "map",
+        style: "https://demotiles.maplibre.org/style.json", // Default OSM style
+        center: [6.9603, 50.9375], // Note: MapLibre uses [lng, lat] format!
+        zoom: 12,
+      });
+
+      // Add navigation controls
+      this.map.addControl(new maplibregl.NavigationControl());
+
+      // Add scale control
+      this.map.addControl(new maplibregl.ScaleControl());
+
+      // Wait for map to load before adding data
+      this.map.on("load", () => {
+        if (this.showCologneEvents) this.addMarkersToMap();
+        if (this.showHeatmap) this.addHeatmap();
+        if (this.showSights) this.addSightsMarkers();
+        if (this.showTicketmasterEvents) this.addTicketmasterMarkers();
+
+        // Try to get user's location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              this.userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+            },
+            (error) => {
+              console.log("Geolocation error:", error);
+            }
+          );
+        }
+      });
     },
 
     addMarkersToMap() {
-      if (this.cologneEventsLayer) {
-        this.map.removeLayer(this.cologneEventsLayer);
+      // Remove existing markers if they exist
+      if (this.map.getSource("cologne-events")) {
+        this.map.removeLayer("cologne-events-layer");
+        this.map.removeSource("cologne-events");
       }
-      // Erstelle eine neue LayerGroup
-      this.cologneEventsLayer = L.layerGroup();
 
-      // // Vorherige Marker entfernen
-      // this.markers.forEach(marker => this.map.removeLayer(marker));
-      // this.markers.clear();
+      // Create GeoJSON features for events
+      this.eventFeatures = this.filteredEvents.map((event) => {
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [event.lng, event.lat],
+          },
+          properties: {
+            id: event.id,
+            title: event.title,
+            description: event.description || "Keine Beschreibung verfügbar",
+            begin: event.begin,
+            end: event.end,
+            time: event.time || "",
+            location: event.location || "",
+            address: event.address || "",
+            district: event.district || "",
+            price: event.price
+              ? event.price.replace(/<br\s*\ /, "")
+              : "Keine Angaben",
+            link: event.link || "",
+            img: event.img ? `https://www.stadt-koeln.de${event.img}` : null,
+          },
+        };
+      });
 
-      // Neue Marker hinzufügen
-      this.filteredEvents.forEach((event) => {
-        const imageUrl = event.img
-          ? `https://www.stadt-koeln.de${event.img}`
-          : null;
+      // Add GeoJSON source
+      this.map.addSource("cologne-events", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: this.eventFeatures,
+        },
+      });
 
+      // Add circle layer for event markers
+      this.map.addLayer({
+        id: "cologne-events-layer",
+        type: "circle",
+        source: "cologne-events",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": "#3FB1CE",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      // Handle click events on markers
+      this.map.on("click", "cologne-events-layer", (e) => {
+        const feature = e.features[0];
+        const coordinates = feature.geometry.coordinates.slice();
+        const properties = feature.properties;
+
+        // Create popup HTML content
+        const imageUrl = properties.img;
         const popupContent = `
           <div class="text-left space-y-1">
             ${
@@ -168,39 +230,38 @@ export default {
                 ? `<img src="${imageUrl}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
                 : ""
             }
-            <h3 class="font-semibold text-base">${event.title}</h3>
-            <p class="text-sm text-gray-700">${
-              event.description || "Keine Beschreibung verfügbar"
-            }</p>
+            <h3 class="font-semibold text-base">${properties.title}</h3>
+            <p class="text-sm text-gray-700">${properties.description}</p>
             <p class="text-sm text-gray-500">
-              ${this.formatDate(event.begin)} - ${this.formatDate(
-          event.end
+              ${this.formatDate(properties.begin)} - ${this.formatDate(
+          properties.end
         )}, ${
-          event.time
-            ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, "")
+          properties.time
+            ? properties.time.replace(
+                /<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi,
+                ""
+              )
             : ""
         }
             </p>
             <p class="text-sm text-gray-500">
-              <b>Ort:</b> ${event.location || ""}, ${event.address || ""} ${
-          event.district || ""
+              <b>Ort:</b> ${properties.location}, ${properties.address} ${
+          properties.district
         }
             </p>
             <p class="text-sm text-gray-500">
-              <b>Preis:</b> ${
-                event.price?.replace(/<br\s*\/?>/gi, "") || "Keine Angaben"
-              }
+              <b>Preis:</b> ${properties.price}
             </p>
             ${
-              event.link
-                ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
+              properties.link
+                ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${properties.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
                 : ""
             }
             <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
             <button 
               class="flex items-center justify-end text-gray-500 font-bold mt-2 cursor-pointer w-full"
               title="Zur Liste springen"
-              data-event-id="${event.id}">
+              id="jump-to-list-${properties.id}">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
@@ -208,257 +269,548 @@ export default {
           </div>
         `;
 
-        const marker = L.marker([event.lat, event.lng]).bindPopup(popupContent);
+        // Create and display popup
+        const popup = new maplibregl.Popup()
+          .setLngLat(coordinates)
+          .setHTML(popupContent)
+          .addTo(this.map);
 
-        // marker.addTo(this.map);
+        // Add event listeners once popup is added to DOM
+        popup.on("open", () => {
+          setTimeout(() => {
+            const jumpBtn = document.getElementById(
+              `jump-to-list-${properties.id}`
+            );
+            if (jumpBtn) {
+              jumpBtn.addEventListener("click", () =>
+                this.scrollToList(properties.id)
+              );
+            }
 
-        // Füge einen Click-Listener hinzu, wenn das Popup geöffnet wird
-        marker.on("popupopen", (e) => {
-          const button = document.querySelector(
-            `[data-event-id="${event.id}"]`
-          );
-          if (button) {
-            button.addEventListener("click", () => this.scrollToList(event.id));
-          }
-
-          const popupEl = e.popup.getElement();
-          const btn = popupEl.querySelector(".route-link");
-          if (btn) {
-            btn.addEventListener("click", () => {
-              // Rufe die showRoute-Methode auf – hier als Beispiel mit event-Koordinaten:
-              this.showRoute(event.lat, event.lng);
-            });
-          }
+            const routeBtn = document.querySelector(".route-link");
+            if (routeBtn) {
+              routeBtn.addEventListener("click", () => {
+                this.showRoute(coordinates[1], coordinates[0]);
+              });
+            }
+          }, 100);
         });
-
-        marker.addTo(this.cologneEventsLayer);
-
-        this.markers.set(event.id, marker);
       });
 
-      this.cologneEventsLayer.addTo(this.map);
+      // Change cursor on hover
+      this.map.on("mouseenter", "cologne-events-layer", () => {
+        this.map.getCanvas().style.cursor = "pointer";
+      });
 
-      // Aktualisiere die Kartendarstellung
-      this.map.invalidateSize();
+      this.map.on("mouseleave", "cologne-events-layer", () => {
+        this.map.getCanvas().style.cursor = "";
+      });
     },
 
     addHeatmap() {
       if (!this.filteredEvents.length) return;
 
-      const heatmapData = this.filteredEvents.map((event) => [
-        event.lat, // Latitude
-        event.lng, // Longitude
-        0.2, // Gewicht reduzieren (Standard ist 1)
-      ]);
-
-      if (this.heatLayer) {
-        this.map.removeLayer(this.heatLayer);
+      // Remove existing heatmap if it exists
+      if (this.map.getSource("heatmap-data")) {
+        this.map.removeLayer("heatmap-layer");
+        this.map.removeSource("heatmap-data");
       }
 
-      this.heatLayer = L.heatLayer(heatmapData, {
-        radius: 50, // Größe der Punkte
-        blur: 25, // Unschärfe um die Punkte
-        max: 0.3, // Maximale Intensität weiter reduzieren
-        maxZoom: 10, // Heatmap wird nicht zu stark bei Zoom sichtbar
-        minOpacity: 0.1, // Mindestsichtbarkeit der Heatmap
-        gradient: {
-          0.2: "blue",
-          0.4: "purple",
-          0.6: "violet",
-          0.8: "magenta",
-          1.0: "red",
+      // Create GeoJSON for heatmap
+      const heatmapPoints = this.filteredEvents.map((event) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [event.lng, event.lat],
+        },
+        properties: {
+          intensity: 0.2,
+        },
+      }));
+
+      // Add GeoJSON source for heatmap
+      this.map.addSource("heatmap-data", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: heatmapPoints,
         },
       });
 
-      this.map.addLayer(this.heatLayer);
+      // Add heatmap layer
+      this.map.addLayer({
+        id: "heatmap-layer",
+        type: "heatmap",
+        source: "heatmap-data",
+        maxzoom: 15,
+        paint: {
+          "heatmap-weight": ["get", "intensity"],
+          "heatmap-intensity": 1,
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0, 0, 255, 0)",
+            0.2,
+            "rgb(0, 0, 255)",
+            0.4,
+            "rgb(128, 0, 255)",
+            0.6,
+            "rgb(255, 0, 255)",
+            0.8,
+            "rgb(255, 0, 0)",
+            1,
+            "rgb(255, 0, 0)",
+          ],
+          "heatmap-radius": 30,
+          "heatmap-opacity": 0.7,
+        },
+      });
     },
 
     removeHeatmap() {
-      if (this.heatLayer) {
-        this.map.removeLayer(this.heatLayer);
-        this.heatLayer = null;
+      if (this.map.getSource("heatmap-data")) {
+        this.map.removeLayer("heatmap-layer");
+        this.map.removeSource("heatmap-data");
       }
     },
 
     addTicketmasterMarkers() {
-      // Falls bereits vorhanden, entfernen
-      if (this.markersCluster) {
-        this.map.removeLayer(this.markersCluster);
+      // Remove existing Ticketmaster markers
+      if (this.map.getSource("ticketmaster-events")) {
+        this.map.removeLayer("ticketmaster-clusters");
+        this.map.removeLayer("ticketmaster-cluster-count");
+        this.map.removeLayer("ticketmaster-unclustered-point");
+        this.map.removeSource("ticketmaster-events");
       }
-      // Erstelle eine neue Cluster-Gruppe
-      this.markersCluster = L.markerClusterGroup();
 
-      this.filteredTicketmasterEvents.forEach((event) => {
-        // Wir nehmen den ersten Venue-Eintrag
+      // Create GeoJSON data for Ticketmaster events
+      const features = this.filteredTicketmasterEvents.map((event) => {
         const venue = event._embedded.venues[0];
         const lat = parseFloat(venue.location.latitude);
         const lng = parseFloat(venue.location.longitude);
-        // Popup-Inhalt zusammenstellen:
-        const image =
-          event.images && event.images.length > 0 ? event.images[0].url : "";
-        const name = event.name;
-        const date = event.dates.start.localDate || "kein Datum verfügbar";
-        const time = event.dates.start.localTime || "";
-        const address = venue.address
-          ? venue.address.line1
-          : "keine Adresse verfügbar";
-        const city = venue.city ? venue.city.name : "";
-        const eventUrl = event.url || "kein Link verfügbar";
 
-        const popupContent = `
-              <div class="text-left space-y-1">
-                ${
-                  image
-                    ? `<img src="${image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-                    : ""
-                }
-                <h3 class="font-semibold text-base">${name}</h3>
-                <p class="text-sm text-gray-500">${this.formatDate(date)}, ${
-          time ? time.slice(0, 5) + " Uhr" : time
-        }</p>
-                <p class="text-sm text-gray-500"><b>Ort</b>: ${address}, ${city}</p>
-                <p class="text-sm text-blue-600"><b>Link</b>: <a href="${eventUrl}" target="_blank" class="underline">Zu Ticketmaster</a></p>
-                </div>
-            `;
-
-        // Definiere ein rotes Marker-Icon mit ExtraMarkers (verwende z. B. ein Ticket-Icon)
-        const ticketIcon = L.ExtraMarkers.icon({
-          icon: "fa-circle", // FontAwesome-Symbol; stelle sicher, dass FontAwesome eingebunden ist
-          markerColor: "red",
-          shape: "circle",
-          prefix: "fa",
-          iconColor: "white",
-        });
-        const marker = L.marker([lat, lng], { icon: ticketIcon });
-        marker.bindPopup(popupContent);
-
-        // Füge den Marker zur Cluster-Gruppe hinzu
-        this.markersCluster.addLayer(marker);
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [lng, lat],
+          },
+          properties: {
+            id: event.id,
+            name: event.name,
+            date: event.dates.start.localDate || "kein Datum verfügbar",
+            time: event.dates.start.localTime || "",
+            address: venue.address
+              ? venue.address.line1
+              : "keine Adresse verfügbar",
+            city: venue.city ? venue.city.name : "",
+            eventUrl: event.url || "kein Link verfügbar",
+            image:
+              event.images && event.images.length > 0
+                ? event.images[0].url
+                : "",
+          },
+        };
       });
-      this.map.addLayer(this.markersCluster);
-      this.map.invalidateSize();
+
+      // Add clustered GeoJSON source
+      this.map.addSource("ticketmaster-events", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: features,
+        },
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
+      });
+
+      // Add a layer for the clusters
+      this.map.addLayer({
+        id: "ticketmaster-clusters",
+        type: "circle",
+        source: "ticketmaster-events",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": [
+            "step",
+            ["get", "point_count"],
+            "#ff4d4d", // Red for small clusters
+            5,
+            "#ff1a1a", // Darker red for medium clusters
+            10,
+            "#cc0000", // Very dark red for large clusters
+          ],
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            20, // Size for small clusters
+            5,
+            25, // Size for medium clusters
+            10,
+            30, // Size for large clusters
+          ],
+        },
+      });
+
+      // Add a layer for the cluster counts
+      this.map.addLayer({
+        id: "ticketmaster-cluster-count",
+        type: "symbol",
+        source: "ticketmaster-events",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": "{point_count_abbreviated}",
+          "text-font": ["Open Sans Bold"],
+          "text-size": 12,
+        },
+        paint: {
+          "text-color": "#ffffff",
+        },
+      });
+
+      // Add a layer for individual points (non-clustered)
+      this.map.addLayer({
+        id: "ticketmaster-unclustered-point",
+        type: "circle",
+        source: "ticketmaster-events",
+        filter: ["!", ["has", "point_count"]],
+        paint: {
+          "circle-color": "#ff4d4d",
+          "circle-radius": 8,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      // Add click handler for individual points
+      this.map.on("click", "ticketmaster-unclustered-point", (e) => {
+        const properties = e.features[0].properties;
+        const coordinates = e.features[0].geometry.coordinates.slice();
+
+        // Generate popup content
+        const popupContent = `
+          <div class="text-left space-y-1">
+            ${
+              properties.image
+                ? `<img src="${properties.image}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+                : ""
+            }
+            <h3 class="font-semibold text-base">${properties.name}</h3>
+            <p class="text-sm text-gray-500">${this.formatDate(
+              properties.date
+            )}, ${
+          properties.time
+            ? properties.time.slice(0, 5) + " Uhr"
+            : properties.time
+        }</p>
+            <p class="text-sm text-gray-500"><b>Ort</b>: ${
+              properties.address
+            }, ${properties.city}</p>
+            <p class="text-sm text-blue-600"><b>Link</b>: <a href="${
+              properties.eventUrl
+            }" target="_blank" class="underline">Zu Ticketmaster</a></p>
+          </div>
+        `;
+
+        // Create and display popup
+        new maplibregl.Popup()
+          .setLngLat(coordinates)
+          .setHTML(popupContent)
+          .addTo(this.map);
+      });
+
+      // Handle clicks on clusters to zoom in
+      this.map.on("click", "ticketmaster-clusters", (e) => {
+        const features = this.map.queryRenderedFeatures(e.point, {
+          layers: ["ticketmaster-clusters"],
+        });
+        const clusterId = features[0].properties.cluster_id;
+
+        this.map
+          .getSource("ticketmaster-events")
+          .getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err) return;
+
+            this.map.easeTo({
+              center: features[0].geometry.coordinates,
+              zoom: zoom,
+            });
+          });
+      });
+
+      // Change cursor on hover
+      this.map.on("mouseenter", "ticketmaster-unclustered-point", () => {
+        this.map.getCanvas().style.cursor = "pointer";
+      });
+
+      this.map.on("mouseleave", "ticketmaster-unclustered-point", () => {
+        this.map.getCanvas().style.cursor = "";
+      });
+
+      this.map.on("mouseenter", "ticketmaster-clusters", () => {
+        this.map.getCanvas().style.cursor = "pointer";
+      });
+
+      this.map.on("mouseleave", "ticketmaster-clusters", () => {
+        this.map.getCanvas().style.cursor = "";
+      });
     },
 
     addSightsMarkers() {
-      // Falls bereits vorhanden, entfernen
-      if (this.sightsLayer) {
-        this.map.removeLayer(this.sightsLayer);
+      // Remove existing sights markers
+      if (this.map.getSource("sights-data")) {
+        this.map.removeLayer("sights-layer");
+        this.map.removeSource("sights-data");
       }
-      // Erstelle eine neue LayerGroup
-      this.sightsLayer = L.layerGroup();
-      // Abrufen der Sehenswürdigkeiten-Daten
+
+      // Fetch sights data
       fetch("http://localhost:3000/api/sehenswuerdigkeiten")
         .then((response) => response.json())
         .then((data) => {
-          data.features.forEach((feature) => {
-            const lat = feature.geometry.y;
-            const lng = feature.geometry.x;
-            const name = feature.attributes.name || "Kein Name";
-            const address = feature.attributes.adresse || "Keine Adresse";
-            const district = feature.attributes.stadtteil || "";
+          // Create GeoJSON features
+          const features = data.features.map((feature) => {
+            return {
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [feature.geometry.x, feature.geometry.y],
+              },
+              properties: {
+                name: feature.attributes.name || "Kein Name",
+                address: feature.attributes.adresse || "Keine Adresse",
+                district: feature.attributes.stadtteil || "",
+              },
+            };
+          });
 
-            // Erstelle einen eindeutigen Button-ID (hier z.B. basierend auf Name und lat)
+          // Add GeoJSON source
+          this.map.addSource("sights-data", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: features,
+            },
+          });
+
+          // Add a layer for the sights as circles with green color
+          this.map.addLayer({
+            id: "sights-layer",
+            type: "circle",
+            source: "sights-data",
+            paint: {
+              "circle-radius": 8,
+              "circle-color": "#4CAF50", // Green color
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff",
+            },
+          });
+
+          // Add click event for popups
+          this.map.on("click", "sights-layer", (e) => {
+            const feature = e.features[0];
+            const coordinates = feature.geometry.coordinates.slice();
+            const properties = feature.properties;
+
+            // Create popup content
             const popupContent = `
-              <strong>${name}</strong><br>${address}, ${district}<br>
+              <strong>${properties.name}</strong><br>${properties.address}, ${properties.district}<br>
               <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
             `;
-            const marker = L.marker([lat, lng], { icon: sightsIcon });
-            marker.bindPopup(popupContent);
 
-            // Sobald das Popup geöffnet wird, füge den Click-Listener hinzu:
-            marker.on("popupopen", (e) => {
-              const popupEl = e.popup.getElement();
-              const btn = popupEl.querySelector(".route-link");
-              if (btn) {
-                btn.addEventListener("click", () => {
-                  this.showRoute(lat, lng);
-                });
-              }
+            // Create and display popup
+            const popup = new maplibregl.Popup()
+              .setLngLat(coordinates)
+              .setHTML(popupContent)
+              .addTo(this.map);
+
+            // Add event listener for route button
+            popup.on("open", () => {
+              setTimeout(() => {
+                const routeBtn = document.querySelector(".route-link");
+                if (routeBtn) {
+                  routeBtn.addEventListener("click", () => {
+                    this.showRoute(coordinates[1], coordinates[0]);
+                  });
+                }
+              }, 100);
             });
-
-            marker.addTo(this.sightsLayer);
           });
-          this.sightsLayer.addTo(this.map);
+
+          // Change cursor on hover
+          this.map.on("mouseenter", "sights-layer", () => {
+            this.map.getCanvas().style.cursor = "pointer";
+          });
+
+          this.map.on("mouseleave", "sights-layer", () => {
+            this.map.getCanvas().style.cursor = "";
+          });
         })
         .catch((error) =>
           console.error("Fehler beim Laden der Sehenswürdigkeiten:", error)
         );
     },
+
     removeSightsMarkers() {
-      if (this.sightsLayer) {
-        this.sightsLayer.eachLayer((layer) => {
-          layer.off(); // Alle Event-Listener entfernen
-          layer.unbindPopup(); // Popup unbinden
-        });
-        this.map.removeLayer(this.sightsLayer);
-        this.sightsLayer = null;
+      if (this.map.getSource("sights-data")) {
+        this.map.removeLayer("sights-layer");
+        this.map.removeSource("sights-data");
       }
     },
 
     showRoute(destinationLat, destinationLng) {
-      // Falls bereits ein Routing-Control existiert, entferne es:
-      if (this.routingControl) {
-        this.map.removeControl(this.routingControl);
+      // Define user location and destination in [long, lat] format
+      const origin = [this.userLocation.lng, this.userLocation.lat];
+      const destination = [destinationLng, destinationLat];
+
+      // Remove previous route if it exists
+      if (this.map.getSource("route")) {
+        this.map.removeLayer("route-layer");
+        this.map.removeSource("route");
       }
-      // Erstelle und füge die Routing-Control hinzu:
-      this.routingControl = L.Routing.control({
-        waypoints: [
-          L.latLng(this.userLocation.lat, this.userLocation.lng),
-          L.latLng(destinationLat, destinationLng),
-        ],
-        draggableWaypoints: true,
-        addWaypoints: false,
-        routeWhileDragging: true,
-        showAlternatives: false,
-        router: L.Routing.osrmv1({
-          serviceUrl: "https://router.project-osrm.org/route/v1",
-        }),
-        // Erzeuge eigene Marker (für Start und Ende)
-        createMarker: function (i, wp, nWps) {
-          let icon;
-          if (i === 0) {
-            // Startmarker: Symbol "A"
-            icon = L.divIcon({
-              className: "custom-route-marker start-marker",
-              html: '<div style="background:yellow;color:black;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-weight:bold;">A</div>',
-              iconSize: [30, 30],
-              iconAnchor: [15, 30],
-            });
-          } else if (i === nWps - 1) {
-            // Endmarker: Symbol "B"
-            icon = L.divIcon({
-              className: "custom-route-marker end-marker",
-              html: '<div style="background:yellow;color:black;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-weight:bold;">B</div>',
-              iconSize: [30, 30],
-              iconAnchor: [15, 30],
-            });
+
+      // Remove previous markers if they exist
+      if (this.startMarker) this.startMarker.remove();
+      if (this.endMarker) this.endMarker.remove();
+
+      // Add start and end markers
+      this.startMarker = new maplibregl.Marker({ color: "#00FF00" })
+        .setLngLat(origin)
+        .addTo(this.map);
+
+      this.endMarker = new maplibregl.Marker({ color: "#FF0000" })
+        .setLngLat(destination)
+        .addTo(this.map);
+
+      // Call the OSRM API to get the route
+      fetch(
+        `https://router.project-osrm.org/route/v1/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?overview=full&geometries=geojson`
+      )
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.code !== "Ok") {
+            console.error("Error fetching route:", data.message);
+            return;
           }
-          return L.marker(wp.latLng, { draggable: true, icon: icon });
-        },
-        lineOptions: {
-          styles: [{ color: "blue", opacity: 0.6, weight: 4 }],
-        },
-      }).addTo(this.map);
+
+          const route = data.routes[0];
+          const routeGeometry = route.geometry;
+
+          // Add the route to the map
+          this.map.addSource("route", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: routeGeometry,
+            },
+          });
+
+          this.map.addLayer({
+            id: "route-layer",
+            type: "line",
+            source: "route",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#0000FF",
+              "line-width": 4,
+              "line-opacity": 0.7,
+            },
+          });
+
+          // Fit the map to the route
+          const bounds = new maplibregl.LngLatBounds();
+          routeGeometry.coordinates.forEach((coord) => {
+            bounds.extend(coord);
+          });
+
+          this.map.fitBounds(bounds, {
+            padding: 50,
+          });
+        })
+        .catch((error) => console.error("Error fetching route:", error));
     },
 
     focusOnEvent(event) {
-      const marker = this.markers.get(event.id);
-      if (marker) {
-        this.map.flyTo(marker.getLatLng(), 15);
-        marker.openPopup();
+      if (!this.map) return;
+
+      this.map.flyTo({
+        center: [event.lng, event.lat],
+        zoom: 15,
+      });
+
+      // Create a popup for the event
+      const popupContent = `
+        <div class="text-left space-y-1">
+          ${
+            event.img
+              ? `<img src="https://www.stadt-koeln.de${event.img}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+              : ""
+          }
+          <h3 class="font-semibold text-base">${event.title}</h3>
+          <p class="text-sm text-gray-700">${
+            event.description || "Keine Beschreibung verfügbar"
+          }</p>
+          <p class="text-sm text-gray-500">
+            ${this.formatDate(event.begin)} - ${this.formatDate(event.end)}, ${
+        event.time
+          ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, "")
+          : ""
       }
+          </p>
+          <p class="text-sm text-gray-500">
+            <b>Ort:</b> ${event.location || ""}, ${event.address || ""} ${
+        event.district || ""
+      }
+          </p>
+          <p class="text-sm text-gray-500">
+            <b>Preis:</b> ${
+              event.price?.replace(/<br\s*\/?>/gi, "") || "Keine Angaben"
+            }
+          </p>
+          ${
+            event.link
+              ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
+              : ""
+          }
+          <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
+        </div>
+      `;
+
+      const popup = new maplibregl.Popup()
+        .setLngLat([event.lng, event.lat])
+        .setHTML(popupContent)
+        .addTo(this.map);
+
+      popup.on("open", () => {
+        setTimeout(() => {
+          const routeBtn = document.querySelector(".route-link");
+          if (routeBtn) {
+            routeBtn.addEventListener("click", () => {
+              this.showRoute(event.lat, event.lng);
+            });
+          }
+        }, 100);
+      });
     },
+
     scrollToList(eventId) {
       const safeId = `event-${eventId}`;
-      const listItem = document.getElementById(safeId); // Element in der Liste finden
+      const listItem = document.getElementById(safeId);
       if (listItem) {
-        listItem.scrollIntoView({ behavior: "smooth", block: "center" }); // Smooth-Scroll
-        listItem.classList.add("highlight"); // Highlight hinzufügen
+        listItem.scrollIntoView({ behavior: "smooth", block: "center" });
+        listItem.classList.add("highlight");
         setTimeout(() => {
-          listItem.classList.remove("highlight"); // Highlight nach 2 Sekunden entfernen
+          listItem.classList.remove("highlight");
         }, 2000);
       }
     },
+
     toggleDetails(index) {
       if (this.expandedIndices.includes(index)) {
         this.expandedIndices = this.expandedIndices.filter((i) => i !== index);
@@ -470,30 +822,30 @@ export default {
   watch: {
     filteredEvents: {
       handler() {
-        if (this.showCologneEvents) {
-          if (this.map) {
-            this.addMarkersToMap();
-          }
+        if (this.showCologneEvents && this.map) {
+          this.addMarkersToMap();
         }
-        if (this.showHeatmap) {
+        if (this.showHeatmap && this.map) {
           this.removeHeatmap();
           this.addHeatmap();
         }
       },
       immediate: true,
     },
+
     filteredTicketmasterEvents: {
       handler() {
-        if (this.showTicketmasterEvents) {
-          if (this.map) {
-            this.addTicketmasterMarkers();
-          }
+        if (this.showTicketmasterEvents && this.map) {
+          this.addTicketmasterMarkers();
         }
       },
       immediate: true,
     },
+
     showHeatmap: {
       handler(newVal) {
+        if (!this.map) return;
+
         if (newVal) {
           this.addHeatmap();
         } else {
@@ -502,8 +854,11 @@ export default {
       },
       immediate: true,
     },
+
     showSights: {
       handler(newVal) {
+        if (!this.map) return;
+
         if (newVal) {
           this.addSightsMarkers();
         } else {
@@ -512,23 +867,31 @@ export default {
       },
       immediate: true,
     },
+
     showCologneEvents: {
       handler(newVal) {
-        if (newVal == true) {
+        if (!this.map) return;
+
+        if (newVal) {
           this.addMarkersToMap();
-        } else if (newVal == false && this.cologneEventsLayer) {
-          this.map.removeLayer(this.cologneEventsLayer);
-          this.cologneEventsLayer = null;
+        } else if (this.map.getSource("cologne-events")) {
+          this.map.removeLayer("cologne-events-layer");
+          this.map.removeSource("cologne-events");
         }
       },
     },
+
     showTicketmasterEvents: {
       handler(newVal) {
-        if (newVal == true) {
+        if (!this.map) return;
+
+        if (newVal) {
           this.addTicketmasterMarkers();
-        } else if (newVal == false && this.markersCluster) {
-          this.map.removeLayer(this.markersCluster);
-          this.markersCluster = null;
+        } else if (this.map.getSource("ticketmaster-events")) {
+          this.map.removeLayer("ticketmaster-clusters");
+          this.map.removeLayer("ticketmaster-cluster-count");
+          this.map.removeLayer("ticketmaster-unclustered-point");
+          this.map.removeSource("ticketmaster-events");
         }
       },
     },
@@ -557,13 +920,18 @@ export default {
   height: 100%;
 }
 
-.leaflet-container {
-  z-index: 0 !important;
-}
-
 .highlight {
   background-color: #f0f0f0;
-  /* Helles Grau */
   transition: background-color 0.3s ease;
+}
+
+/* Custom styles for MapLibre popups */
+:global(.maplibregl-popup-content) {
+  padding: 15px;
+  max-width: 300px;
+}
+
+:global(.maplibregl-popup-close-button) {
+  font-size: 16px;
 }
 </style>
