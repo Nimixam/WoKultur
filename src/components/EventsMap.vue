@@ -120,7 +120,7 @@ export default {
       return `${day}.${month}.${year}`;
     },
 
-    // Methode zum Anhängen von Listenern an das Popup
+    // Fügt Listener für Buttons im Popup hinzu
     attachPopupListeners(popup, coords, properties = null) {
       setTimeout(() => {
         if (properties && properties.id) {
@@ -183,7 +183,7 @@ export default {
         this.map.removeSource("cologne-events");
       }
 
-      // Koordinaten explizit in Zahlen umwandeln
+      // Erstellen der GeoJSON-Features
       this.eventFeatures = this.filteredEvents.map((event) => ({
         type: "Feature",
         geometry: {
@@ -230,8 +230,14 @@ export default {
 
       this.map.on("click", "cologne-events-layer", (e) => {
         const feature = e.features[0];
-        const coordinates = feature.geometry.coordinates.slice();
+        let coordinates = feature.geometry.coordinates.slice();
         const properties = feature.properties;
+
+        // Hier wird sichergestellt, dass bei Karten-Wrapping
+        // das Popup an der richtigen (sichtbaren) Version des Features erscheint:
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+          coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
 
         const imageUrl = properties.img;
         const popupContent = `
@@ -280,7 +286,7 @@ export default {
           </div>
         `;
 
-        // Zum Event-Standort fliegen
+        // Wir fliegen zum Marker (dabei bleibt der Marker in der Mitte)
         this.map.flyTo({
           center: coordinates,
           zoom: Math.max(this.map.getZoom() - 0.3, 10),
@@ -288,9 +294,12 @@ export default {
         });
 
         setTimeout(() => {
-          // Popup wird im document.body angehängt, sodass es nicht vom Kartenrand abgeschnitten wird
+          // Popup wird ohne container-Option erstellt, sodass es in den Map-Container eingefügt wird.
+          // Mit autoPan und autoPanPadding wird die Karte automatisch verschoben, wenn das Popup
+          // außerhalb des sichtbaren Bereichs liegen sollte.
           const popup = new maplibregl.Popup({
-            container: document.body,
+            autoPan: true,
+            autoPanPadding: { top: 25, bottom: 25, left: 25, right: 25 },
             anchor: "bottom",
             offset: 25,
             maxWidth: "300px",
@@ -506,7 +515,8 @@ export default {
         `;
 
         new maplibregl.Popup({
-          container: document.body,
+          autoPan: true,
+          autoPanPadding: { top: 25, bottom: 25, left: 25, right: 25 },
           anchor: "bottom",
           offset: 25,
         })
@@ -597,11 +607,13 @@ export default {
             <div style="color: gray;">
               <strong>${properties.name}</strong><br>${properties.address}, ${properties.district}<br>
               <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
+            </div>
             `;
 
             setTimeout(() => {
               const popup = new maplibregl.Popup({
-                container: document.body,
+                autoPan: true,
+                autoPanPadding: { top: 25, bottom: 25, left: 25, right: 25 },
                 anchor: "bottom",
                 offset: 25,
                 maxWidth: "350px",
@@ -710,65 +722,78 @@ export default {
 
       const lng = parseFloat(event.lng);
       const lat = parseFloat(event.lat);
+      const originalCoords = [lng, lat];
 
+      // Konvertiere die Markerkoordinate in Pixelkoordinaten
+      const pixelCoords = this.map.project(originalCoords);
+      // Um den Marker im oberen Bereich der Karte anzuzeigen, soll er nicht zentriert werden.
+      // Da die y-Achse nach unten steigt, müssen wir den y-Wert verringern, damit der Marker tiefer erscheint.
+      // (Falls du den Marker weiter unten haben möchtest, würde man stattdessen den y-Wert erhöhen.)
+      pixelCoords.y -= 200; // experimenteller Wert – anpassen, falls nötig
+
+      // Berechne den neuen geografischen Mittelpunkt, der zu diesen Pixelkoordinaten passt
+      const offsetCenter = this.map.unproject(pixelCoords);
+
+      // Starte die Animation – hier fliegt die Karte zum neu berechneten Mittelpunkt.
       this.map.flyTo({
-        center: [lng, lat],
+        center: [offsetCenter.lng, offsetCenter.lat],
         zoom: 15,
         duration: 300,
       });
 
-      const popupContent = `
-        <div class="text-left space-y-1">
-          ${
-            event.img
-              ? `<img src="https://www.stadt-koeln.de${event.img}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
-              : ""
+      // Öffne das Popup erst, wenn die Bewegung abgeschlossen ist
+      this.map.once("moveend", () => {
+        const popupContent = `
+      <div class="text-left space-y-1">
+        ${
+          event.img
+            ? `<img src="https://www.stadt-koeln.de${event.img}" alt="Teaserbild" class="w-32 h-20 rounded object-cover">`
+            : ""
+        }
+        <h3 class="font-semibold text-base">${event.title}</h3>
+        <p class="text-sm text-gray-700">${
+          event.description || "Keine Beschreibung verfügbar"
+        }</p>
+        <p class="text-sm text-gray-500">
+          ${this.formatDate(event.begin)} - ${this.formatDate(event.end)}, ${
+          event.time ? event.time.replace(/<br\s*\/?>/gi, "") : ""
+        }
+        </p>
+        <p class="text-sm text-gray-500">
+          <b>Ort:</b> ${event.location || ""}, ${event.address || ""} ${
+          event.district || ""
+        }
+        </p>
+        <p class="text-sm text-gray-500">
+          <b>Preis:</b> ${
+            event.price?.replace(/<br\s*\/?>/gi, "") || "Keine Angaben"
           }
-          <h3 class="font-semibold text-base">${event.title}</h3>
-          <p class="text-sm text-gray-700">${
-            event.description || "Keine Beschreibung verfügbar"
-          }</p>
-          <p class="text-sm text-gray-500">
-            ${this.formatDate(event.begin)} - ${this.formatDate(event.end)}, ${
-        event.time
-          ? event.time.replace(/<br\s*\/?>|&lt;br\s*\/?&gt;|\s*<br>\s*/gi, "")
-          : ""
-      }
-          </p>
-          <p class="text-sm text-gray-500">
-            <b>Ort:</b> ${event.location || ""}, ${event.address || ""} ${
-        event.district || ""
-      }
-          </p>
-          <p class="text-sm text-gray-500">
-            <b>Preis:</b> ${
-              event.price?.replace(/<br\s*\/?>/gi, "") || "Keine Angaben"
-            }
-          </p>
-          ${
-            event.link
-              ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
-              : ""
-          }
-          <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
-        </div>
-      `;
+        </p>
+        ${
+          event.link
+            ? `<p class="text-sm text-blue-600"><b>Link:</b> <a href="${event.link}" target="_blank" class="underline">Mehr erfahren</a></p>`
+            : ""
+        }
+        <button class="route-link" style="color:blue; text-decoration: underline;">Route anzeigen</button>
+      </div>
+    `;
 
-      setTimeout(() => {
+        // Popup erstellen – autoPan wird hier aktiviert, falls das Popup dennoch teilweise außerhalb liegen sollte.
         const popup = new maplibregl.Popup({
-          container: document.body,
+          autoPan: true,
+          autoPanPadding: { top: 25, bottom: 25, left: 25, right: 25 },
           anchor: "bottom",
           offset: 25,
           maxWidth: "300px",
         })
-          .setLngLat([lng, lat])
+          .setLngLat(originalCoords)
           .setHTML(popupContent)
           .addTo(this.map);
 
         popup.on("open", () => {
           this.attachPopupListeners(popup, { lat, lng });
         });
-      }, 350);
+      });
     },
 
     scrollToList(eventId) {
