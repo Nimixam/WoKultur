@@ -1,3 +1,4 @@
+<!-- EventsMap.vue -->
 <template>
   <!-- Haupt-Container (Map, Event-Liste und Side-Panel) -->
   <section class="flex flex-row w-full h-[600px]">
@@ -425,7 +426,6 @@ export default {
           "circle-stroke-color": "#ffffff",
         },
       });
-      // Click-Handler: Beim Klick auf Ticketmaster Marker dieselbe Logik wie bei "Events (Stadt Köln)"
       this.map.on("click", "ticketmaster-unclustered-point", (e) => {
         const properties = e.features[0].properties;
         const coordinates = e.features[0].geometry.coordinates.slice();
@@ -517,7 +517,6 @@ export default {
               "circle-stroke-color": "#ffffff",
             },
           });
-          // Click-Handler für Sehenswürdigkeiten: dieselbe Logik wie bei "Events (Stadt Köln)"
           this.map.on("click", "sights-layer", (e) => {
             const feature = e.features[0];
             const coordinates = feature.geometry.coordinates.slice();
@@ -578,7 +577,6 @@ export default {
             type: "geojson",
             data: data,
           });
-          // Füll-Layer für Veedel
           this.map.addLayer({
             id: "veedel-layer",
             type: "fill",
@@ -589,7 +587,6 @@ export default {
               "fill-outline-color": "#000000",
             },
           });
-          // Symbol-Layer für die Beschriftung der Veedel (Text aus dem Feld "name")
           this.map.addLayer({
             id: "veedel-labels",
             type: "symbol",
@@ -602,8 +599,8 @@ export default {
               "text-allow-overlap": true,
             },
             paint: {
-              "text-color": "#008000", // Grün (alternativ: #00FF00 für helles Grün)
-              "text-halo-color": "#ffffff", // Weißer Rand für bessere Lesbarkeit
+              "text-color": "#008000",
+              "text-halo-color": "#ffffff",
               "text-halo-width": 1.5,
             },
           });
@@ -630,14 +627,34 @@ export default {
       }
       if (this.startMarker) this.startMarker.remove();
       if (this.endMarker) this.endMarker.remove();
-      this.startMarker = new maplibregl.Marker({ color: "#00FF00" })
+      // Erstelle verschiebbare Marker
+      this.startMarker = new maplibregl.Marker({
+        color: "#00FF00",
+        draggable: true,
+      })
         .setLngLat(origin)
         .addTo(this.map);
-      this.endMarker = new maplibregl.Marker({ color: "#FF0000" })
+      this.endMarker = new maplibregl.Marker({
+        color: "#FF0000",
+        draggable: true,
+      })
         .setLngLat(destination)
         .addTo(this.map);
+      // Bei Verschiebung der Marker wird die Route neu berechnet
+      this.startMarker.on("dragend", this.updateRoute);
+      this.endMarker.on("dragend", this.updateRoute);
+      // Initiale Routenberechnung
+      this.updateRoute();
+    },
+    updateRoute() {
+      const origin = this.startMarker.getLngLat();
+      const destination = this.endMarker.getLngLat();
+      if (this.map.getSource("route")) {
+        this.map.removeLayer("route-layer");
+        this.map.removeSource("route");
+      }
       fetch(
-        `https://router.project-osrm.org/route/v1/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?overview=full&geometries=geojson`
+        `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`
       )
         .then((response) => response.json())
         .then((data) => {
