@@ -602,7 +602,9 @@ export default {
               "text-allow-overlap": true,
             },
             paint: {
-              "text-color": "#000000",
+              "text-color": "#008000", // Grün (alternativ: #00FF00 für helles Grün)
+              "text-halo-color": "#ffffff", // Weißer Rand für bessere Lesbarkeit
+              "text-halo-width": 1.5,
             },
           });
         })
